@@ -1,0 +1,189 @@
+# Spec — Validateur d'inventaire (frontoffice)
+
+## Objectif
+
+Permettre à un secouriste de contrôler le contenu d'un inventaire (véhicule, armoire, sac…) emplacement par emplacement, matériel par matériel, depuis son téléphone, en scannant un QR code, sans compte requis.
+
+## Utilisateurs concernés
+
+- [x] Secouriste (frontoffice, non authentifié)
+- [ ] Responsable / Admin (backoffice, authentifié)
+
+---
+
+## Parcours principal
+
+1. Le secouriste scanne le QR code collé sur l'inventaire → son téléphone ouvre `/inventaire/[inventaireId]`.
+2. L'écran d'accueil affiche le nom de l'inventaire, le nombre d'emplacements et le nombre total de matériels, avec un bouton **Commencer le contrôle**.
+3. Le premier emplacement s'affiche (ex. : "Tiroir 1", "Poche avant"). Pour chaque matériel de cet emplacement (trié par `order`) :
+   - La photo du matériel (si renseignée)
+   - Son nom
+   - Un champ date de péremption **uniquement si `hasExpiry: true`**, clairement labellisé "(facultatif)" ou "(obligatoire)" selon `isCritical`
+4. Le secouriste peut renseigner la date de péremption avant ou après sa décision.
+5. Le secouriste appuie sur **✓ Présent** ou **⚠ Anomalie** (ou swipe droite/gauche).
+6. Si **Anomalie** → une popup s'ouvre, le commentaire est obligatoire avant de continuer.
+7. Si le matériel est `hasExpiry: true` et `isCritical: true` et que la date de péremption n'est pas encore renseignée → le champ est mis en évidence (required) ; impossible de valider sans le remplir.
+8. L'écran avance automatiquement au matériel suivant dans le même emplacement.
+9. Quand tous les matériels d'un emplacement sont traités → l'emplacement suivant s'affiche (trié par `order`).
+10. Après le dernier matériel du dernier emplacement → écran récapitulatif groupé par emplacement : statut de chaque matériel, anomalies mises en avant.
+11. Le secouriste saisit son **nom** (champ obligatoire) puis appuie sur **Soumettre le contrôle**.
+12. Écran de confirmation terminal : "Contrôle enregistré. Merci !" avec la date et l'heure.
+13. Un mail de synthèse est envoyé aux adresses configurées sur le compte admin de l'association.
+
+---
+
+## Parcours alternatifs et edge cases
+
+- Si `inventaireId` inconnu ou supprimé → page d'erreur explicite : "Cet inventaire n'existe pas ou a été supprimé."
+- Si l'inventaire ne contient aucun emplacement, ou que tous ses emplacements sont vides → page d'erreur : "Cet inventaire ne contient aucun matériel à contrôler."
+- Si un emplacement ne contient aucun matériel → il est silencieusement ignoré (non affiché).
+- Si le secouriste ferme l'onglet ou perd la connexion en cours de route → à la réouverture de la même URL, le contrôle repart de zéro. Aucune persistance partielle.
+- Si la soumission échoue (réseau coupé, erreur Firestore) → message d'erreur non bloquant, bouton **Réessayer** visible. Les réponses saisies sont conservées en mémoire (Zustand) pour permettre le retry.
+- Si le matériel est `isCritical` et la date de péremption est vide au moment de la décision → le champ passe en erreur, la décision est bloquée jusqu'à saisie.
+- Si le matériel est `isCritical` et la date est déjà renseignée dans la carte au moment de la décision → aucun blocage supplémentaire.
+- Si le commentaire d'anomalie est vide → impossible de fermer la popup, message de validation affiché.
+- Si un matériel `isCritical` est marqué Anomalie → le champ date de péremption ET le commentaire sont tous deux obligatoires.
+- Si le champ nom du vérificateur est vide à la soumission → impossible de soumettre, message de validation affiché.
+- Après soumission réussie → la page de confirmation est terminale : pas de possibilité de modifier ou de resoumettre depuis cette session.
+
+---
+
+## Règles métier
+
+- L'accès au frontoffice est entièrement **public** : aucune authentification requise.
+- Chaque matériel reçoit exactement **une** décision (Présent ou Anomalie) avant de passer au suivant. Pas de saut, pas de retour en arrière.
+- Un commentaire est **obligatoire** en cas d'Anomalie.
+- Le champ date de péremption est affiché **uniquement pour les matériels `hasExpiry: true`** (matériels périssables). Les matériels non périssables (lampe torche, ciseaux…) n'ont pas de champ date.
+- La date de péremption est **facultative** pour les matériels `hasExpiry: true, isCritical: false`.
+- La date de péremption est **obligatoire** pour tout matériel `hasExpiry: true, isCritical: true`, quelle que soit la décision. Elle peut être saisie à tout moment sur la carte avant la décision ; si elle l'est, la décision n'est pas bloquée.
+- La mention "(facultatif)" ou "(obligatoire)" est affichée à côté du label date selon `isCritical`.
+- Le format de date attendu est **JJ/MM/AAAA** (ou via date picker natif du navigateur).
+- Le nom du vérificateur est **obligatoire** à la soumission.
+- Le contrôle n'est écrit en Firestore **qu'à la soumission finale** : aucune écriture partielle pendant la saisie.
+- Chaque soumission crée **un document `controle` distinct** ; plusieurs contrôles du même inventaire sont possibles (historique conservé).
+- La date/heure de soumission est horodatée côté serveur (`serverTimestamp`), pas côté client.
+- Le mail de synthèse est envoyé **après** l'écriture Firestore réussie. Un échec d'envoi mail ne bloque pas la confirmation à l'utilisateur (loggué côté serveur).
+- Les emplacements sont parcourus dans l'ordre de leur champ `order` (croissant). Les matériels dans un emplacement sont parcourus dans l'ordre de leur propre champ `order`.
+
+---
+
+## Composants UI à créer
+
+- `EcranAccueil` — nom de l'inventaire, nombre d'emplacements et de matériels, bouton de démarrage
+- `EnTeteEmplacement` — affiche le nom de l'emplacement courant et la progression globale
+- `CarteMateriel` — affiche photo, nom, champ date de péremption (toujours visible) et boutons de décision ; gère le swipe gauche/droite
+- `BoutonsDecision` — deux boutons larges (Présent / Anomalie)
+- `ModalAnomalie` — popup avec textarea de commentaire ; bloque la fermeture si vide
+- `BarreProgression` — indicateur "matériel X sur N (emplacement Y sur Z)"
+- `EcranRecapitulatif` — résultats groupés par emplacement, anomalies mises en avant, champ nom du vérificateur, bouton Soumettre
+- `EcranConfirmation` — écran terminal après soumission réussie
+- `EcranErreur` — erreur générique : inventaire introuvable, inventaire vide, ou erreur critique de soumission
+
+---
+
+## Use cases à implémenter
+
+- `chargerInventaire(inventaireId: string)` → `Result<{ inventaire: Inventaire; emplacements: EmplacementAvecMateriels[] }>` — charge l'inventaire, ses emplacements et leurs matériels, triés par `order`
+- `soumettreControle(input: SoumissionControle)` → `Result<{ controleId: string }>` — persiste le contrôle complet et déclenche le mail
+
+```ts
+type Inventaire = {
+  id: string
+  nom: string
+  associationId: string
+}
+
+type EmplacementAvecMateriels = {
+  id: string
+  nom: string
+  order: number
+  materiels: Materiel[]
+}
+
+type Materiel = {
+  id: string
+  nom: string
+  photoUrl: string   // '' si absente — le bloc photo n'est pas affiché
+  hasExpiry: boolean // true = matériel périssable → champ date affiché
+  isCritical: boolean // true = date obligatoire (implique hasExpiry: true)
+  order: number
+}
+
+type SoumissionControle = {
+  inventaireId: string
+  nomVerificateur: string
+  resultats: ResultatMateriel[]
+}
+
+type ResultatMateriel = {
+  materielId: string
+  emplacementId: string
+  statut: 'present' | 'anomalie'
+  commentaire?: string       // obligatoire si anomalie
+  datePeremption?: string    // obligatoire si isCritical, facultatif sinon
+}
+```
+
+---
+
+## Données
+
+**Collections Firestore impliquées**
+
+- `inventaires` — un document par inventaire (véhicule, armoire, sac…) ; champs : `nom`, `associationId`
+- `emplacements` — un document par emplacement ; champs : `inventaireId`, `nom`, `order: number`
+- `materiels` — un document par matériel ; champs : `emplacementId`, `nom`, `photoUrl`, `isCritical: boolean`, `order: number`
+- `controles` — nouvelle collection, un document par contrôle soumis
+
+**Structure d'un document `controles`**
+
+```
+controles/{controleId}
+  inventaireId: string
+  nomVerificateur: string
+  soumisLe: Timestamp          // serverTimestamp
+  resultats: [
+    {
+      materielId: string
+      emplacementId: string
+      statut: 'present' | 'anomalie'
+      commentaire: string | null
+      datePeremption: string | null
+    }
+  ]
+```
+
+> Les noms de collections sont des hypothèses à confirmer lors du sprint backoffice.
+
+---
+
+## Notifications mail
+
+**Mail de synthèse (cette feature)**
+- **Déclencheur** : soumission réussie d'un contrôle
+- **Destinataires** : adresses email configurées sur le compte admin de l'association à laquelle appartient l'inventaire
+- **Contenu** :
+  - Nom de l'inventaire, nom du vérificateur
+  - Date et heure du contrôle
+  - Nombre de matériels vérifiés, nombre d'anomalies
+  - Liste des anomalies groupées par emplacement (nom du matériel + commentaire)
+  - Liste des dates de péremption saisies, groupées par emplacement
+- **Envoi** : via Resend, template react-email, depuis une route API Next.js (`/api/controle/notification`)
+- **Échec d'envoi** : le contrôle est considéré comme soumis ; erreur loguée côté serveur, non remontée à l'utilisateur
+
+**Mail d'alerte péremption (feature future — hors scope)**
+- Les `datePeremption` collectées lors des contrôles seront la source de données pour des alertes mail envoyées aux admins lorsqu'une péremption est imminente.
+- Le déclencheur, la fréquence et le seuil d'alerte (ex. : J-30) sont à définir dans une spec dédiée.
+
+---
+
+## Hors scope
+
+- Modification ou suppression d'un contrôle déjà soumis
+- Authentification du vérificateur (frontoffice entièrement public)
+- Reprise d'un contrôle interrompu (pas de persistance partielle)
+- Génération des QR codes (feature backoffice distincte)
+- Alertes de péremption imminente (feature distincte — voir section Notifications ci-dessus)
+- Gestion des adresses mail destinataires (feature backoffice — paramètres du compte admin)
+- Affichage de l'historique des contrôles au vérificateur
+- Gestion de l'ordre des emplacements (drag & drop, feature backoffice distincte)
