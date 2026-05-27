@@ -15,7 +15,8 @@ if (!getApps().length) {
 const auth = getAuth()
 const db = getFirestore()
 
-const SUPERADMIN_EMAIL = 'gui.gremi@gmail.com'
+const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL
+if (!SUPERADMIN_EMAIL) throw new Error('SUPERADMIN_EMAIL non défini (passer en variable d\'environnement)')
 
 async function main() {
   let uid: string
