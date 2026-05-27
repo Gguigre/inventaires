@@ -11,7 +11,7 @@ export interface ItemFormValues {
 }
 
 interface ItemFormProps {
-  initialValues?: Partial<ItemFormValues>
+  initialValues?: ItemFormValues
   isSubmitting?: boolean
   error?: string
   submitLabel?: string

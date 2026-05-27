@@ -45,7 +45,7 @@ describe('ItemForm', () => {
     render(
       <ItemForm
         {...defaults}
-        initialValues={{ name: 'Garrots', photoUrl: 'https://example.com/photo.jpg', isCritical: false }}
+        initialValues={{ name: 'Garrots', photoUrl: 'https://example.com/photo.jpg', hasExpiry: false, isCritical: false }}
       />,
     )
 
@@ -63,7 +63,7 @@ describe('ItemForm', () => {
       <ItemForm
         {...defaults}
         onSubmit={onSubmit}
-        initialValues={{ name: 'Garrots', photoUrl: 'https://example.com/photo.jpg', isCritical: false }}
+        initialValues={{ name: 'Garrots', photoUrl: 'https://example.com/photo.jpg', hasExpiry: false, isCritical: false }}
       />,
     )
 
@@ -192,7 +192,7 @@ describe('ItemForm — photo par URL', () => {
     render(
       <ItemForm
         {...defaults}
-        initialValues={{ name: 'Oxymètre', photoUrl: 'https://example.com/photo.jpg', isCritical: false }}
+        initialValues={{ name: 'Oxymètre', photoUrl: 'https://example.com/photo.jpg', hasExpiry: false, isCritical: false }}
       />,
     )
 
@@ -208,6 +208,7 @@ describe('ItemForm — photo par URL', () => {
         initialValues={{
           name: 'Masque',
           photoUrl: 'https://firebasestorage.googleapis.com/v0/b/bucket/o/photo.jpg?alt=media',
+          hasExpiry: false,
           isCritical: false,
         }}
       />,

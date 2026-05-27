@@ -76,6 +76,17 @@ export function ItemRow({ item, onEdit, onDelete }: ItemRowProps) {
       {/* Name */}
       <span className="flex-1 text-sm font-medium text-slate-800 truncate">{item.name}</span>
 
+      {/* hasExpiry badge */}
+      {item.hasExpiry && (
+        <span
+          className="flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full
+                     bg-amber-100 text-amber-600"
+          title="Matériel périssable — date de péremption demandée lors du contrôle"
+        >
+          Périssable
+        </span>
+      )}
+
       {/* isCritical badge */}
       {item.isCritical && (
         <span

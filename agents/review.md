@@ -41,6 +41,7 @@ Les corrections sont faites par le développeur ou un nouvel appel à l'agent de
 - [ ] Les `useEffect` ont leurs dépendances complètes
 - [ ] Les composants `'use client'` sont justifiés
 - [ ] Pas de prop drilling excessif (> 3 niveaux)
+- [ ] Les formulaires d'édition passent **tous** les champs de l'entité dans `initialValues` — pas de `Partial<>` sur les props de formulaire en mode édition
 
 ### 4. Sécurité
 - [ ] Les routes backoffice sont protégées par le middleware

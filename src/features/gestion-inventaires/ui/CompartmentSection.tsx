@@ -80,7 +80,7 @@ export function CompartmentSection(props: CompartmentSectionProps) {
                 {localItems.map((item) =>
                   editingItem?.id === item.id ? (
                     <li key={item.id} className="p-3 rounded-lg bg-white border border-blue-200">
-                      <ItemForm initialValues={{ name: item.name, photoUrl: item.photoUrl, isCritical: item.isCritical }} submitLabel="Enregistrer" onSubmit={handleEditItemSubmit} onCancel={() => setEditingItem(null)} />
+                      <ItemForm initialValues={{ name: item.name, photoUrl: item.photoUrl, hasExpiry: item.hasExpiry, isCritical: item.isCritical }} submitLabel="Enregistrer" onSubmit={handleEditItemSubmit} onCancel={() => setEditingItem(null)} />
                     </li>
                   ) : (
                     <ItemRow key={item.id} item={item} onEdit={() => setEditingItem(item)} onDelete={() => setDeletingItem(item)} />

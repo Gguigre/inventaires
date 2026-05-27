@@ -116,6 +116,19 @@ Code minimal qui résout le problème. Rien de spéculatif.
 
 Se demander : "Un senior dirait-il que c'est trop compliqué ?" Si oui, simplifier.
 
+### Formulaires d'édition — règle stricte
+Ne jamais typer `initialValues` avec `Partial<FormValues>` sur un formulaire d'édition.
+En mode édition, toutes les données de l'entité sont disponibles — les passer toutes explicitement.
+`Partial<>` masque les oublis de champs au typage et crée des bugs silencieux (valeur par défaut au lieu de la vraie valeur).
+
+```ts
+// ✗ — Partial accepte { name, photoUrl } sans hasExpiry → bug silencieux
+initialValues?: Partial<ItemFormValues>
+
+// ✓ — TypeScript force à passer tous les champs en mode édition
+initialValues?: ItemFormValues
+```
+
 ### Changements chirurgicaux
 Toucher uniquement ce qui doit l'être. Ne nettoyer que ce qu'on a soi-même sali.
 
