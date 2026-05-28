@@ -9,19 +9,11 @@ import { useControlsListPage } from './hooks/useControlsListPage'
 import { useCorrectionModal } from './hooks/useCorrectionModal'
 import { ExpiryAlertsBlock } from './ExpiryAlertsBlock'
 import { CorrectionModal } from './CorrectionModal'
+import { formatDate, formatDateTime } from '@/shared/lib/format'
 
 interface ControlsListPageProps {
   controls: ControlSummary[]
   alerts: ExpiryAlertReport
-}
-
-function formatDate(iso: string) {
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
-}
-
-function formatDateTime(date: Date) {
-  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 export function ControlsListPage({ controls, alerts }: ControlsListPageProps) {

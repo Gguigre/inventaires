@@ -2,18 +2,10 @@
 import Link from 'next/link'
 import type { ControlDetail } from '../domain/types'
 import { ExpiryStatusBadge } from './ExpiryStatusBadge'
+import { formatDate, formatDateTime } from '@/shared/lib/format'
 
 interface ControlDetailPageProps {
   control: ControlDetail
-}
-
-function formatDate(iso: string) {
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
-}
-
-function formatDateTime(date: Date) {
-  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 export function ControlDetailPage({ control }: ControlDetailPageProps) {
