@@ -189,6 +189,11 @@ Ne jamais court-circuiter ce flux.
    inclure d'UIDs Firebase ou de chemins de stockage.
 8. **Vérifier `shared/lib/` avant de créer un utilitaire** — ne pas
    réimplémenter ce qui existe déjà.
+9. **Nommer les constantes numériques** — ne jamais écrire de nombre magique
+   directement dans le code. Toute valeur numérique significative doit être
+   extraite dans une constante nommée (ex. `FIRESTORE_IN_LIMIT`, `DEFAULT_ALERT_THRESHOLD_DAYS`).
+   Placer les constantes partagées dans `shared/lib/`, les constantes locales
+   à une feature dans le fichier qui les utilise.
 
 ## Gate Implémentation — Arrêt obligatoire
 
