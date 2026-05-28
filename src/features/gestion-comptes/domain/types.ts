@@ -7,6 +7,8 @@ export type AssociationSummary = {
 export type AssociationSettings = {
   name: string
   notificationEmails: string[]
+  alertThresholdDays: number
+  alertIntervalDays: number
 }
 
 export type CreateAssociationInput = {
@@ -17,6 +19,8 @@ export type CreateAssociationInput = {
 export type UpdateAssociationInput = {
   name: string
   notificationEmails: string[]
+  alertThresholdDays: number
+  alertIntervalDays: number
 }
 
 export type AdminAccount = {

@@ -1,12 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/cron/peremptions",
-      "schedule": "0 7 * * *"
-    },
-    {
       "path": "/api/cron/cleanup-orphans",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/expiry-alerts",
+      "schedule": "0 8 * * *"
     }
   ]
 }

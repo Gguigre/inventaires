@@ -55,7 +55,12 @@ export const gestionComptesRepository = {
       const doc = await adminDb.collection('associations').doc(associationId).get()
       if (!doc.exists) return err('Association introuvable.')
       const data = doc.data()!
-      return ok({ name: (data.name as string) ?? '', notificationEmails: (data.notificationEmails as string[]) ?? [] })
+      return ok({
+        name: (data.name as string) ?? '',
+        notificationEmails: (data.notificationEmails as string[]) ?? [],
+        alertThresholdDays: (data.alertThresholdDays as number | undefined) ?? 30,
+        alertIntervalDays: (data.alertIntervalDays as number | undefined) ?? 7,
+      })
     } catch (error) {
       console.error('[getAssociationSettings]', error)
       return err('Impossible de charger les paramètres.')
@@ -64,7 +69,12 @@ export const gestionComptesRepository = {
 
   async updateAssociationSettings(associationId: string, data: UpdateAssociationInput): Promise<Result<void>> {
     try {
-      await adminDb.collection('associations').doc(associationId).update({ name: data.name, notificationEmails: data.notificationEmails })
+      await adminDb.collection('associations').doc(associationId).update({
+        name: data.name,
+        notificationEmails: data.notificationEmails,
+        alertThresholdDays: data.alertThresholdDays,
+        alertIntervalDays: data.alertIntervalDays,
+      })
       return ok(undefined)
     } catch (error) {
       console.error('[updateAssociationSettings]', error)

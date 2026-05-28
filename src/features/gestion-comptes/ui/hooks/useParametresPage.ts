@@ -8,6 +8,8 @@ export function useParametresPage(initial: AssociationSettings) {
   const [emails, setEmails] = useState(initial.notificationEmails)
   const [newEmail, setNewEmail] = useState('')
   const [emailError, setEmailError] = useState<string | undefined>()
+  const [alertThresholdDays, setAlertThresholdDays] = useState(initial.alertThresholdDays)
+  const [alertIntervalDays, setAlertIntervalDays] = useState(initial.alertIntervalDays)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | undefined>()
   const [success, setSuccess] = useState(false)
@@ -30,7 +32,7 @@ export function useParametresPage(initial: AssociationSettings) {
     setIsSaving(true)
     setError(undefined)
     setSuccess(false)
-    const result = await updateAssociationSettingsAction({ name, notificationEmails: emails })
+    const result = await updateAssociationSettingsAction({ name, notificationEmails: emails, alertThresholdDays, alertIntervalDays })
     setIsSaving(false)
     if (result.error) { setError(result.error); return }
     setSuccess(true)
@@ -39,6 +41,8 @@ export function useParametresPage(initial: AssociationSettings) {
   return {
     name, setName,
     emails, newEmail, setNewEmail, emailError, addEmail, removeEmail,
+    alertThresholdDays, setAlertThresholdDays,
+    alertIntervalDays, setAlertIntervalDays,
     isSaving, error, success, handleSave,
   }
 }

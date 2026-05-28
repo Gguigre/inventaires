@@ -21,6 +21,13 @@ function todayPlusDays(n: number): Date {
   return d
 }
 
+async function getAlertThreshold(associationId: string): Promise<number> {
+  try {
+    const doc = await adminDb.collection('associations').doc(associationId).get()
+    return (doc.data()?.alertThresholdDays as number | undefined) ?? 30
+  } catch { return 30 }
+}
+
 async function batchGetNames(collectionName: string, ids: string[]): Promise<Map<string, string>> {
   const result = new Map<string, string>()
   if (ids.length === 0) return result
@@ -32,9 +39,14 @@ async function batchGetNames(collectionName: string, ids: string[]): Promise<Map
 }
 
 export const controlesRepository = {
+  getAlertThreshold,
+
   async listControls(associationId: string): Promise<Result<ControlSummary[]>> {
     try {
-      const inventoriesSnap = await adminDb.collection('inventaires').where('associationId', '==', associationId).get()
+      const [inventoriesSnap, thresholdDays] = await Promise.all([
+        adminDb.collection('inventaires').where('associationId', '==', associationId).get(),
+        getAlertThreshold(associationId),
+      ])
       if (inventoriesSnap.empty) return ok([])
       const inventoryIds = inventoriesSnap.docs.map(d => d.id)
       const controlDocs: FirebaseFirestore.QueryDocumentSnapshot[] = []
@@ -46,7 +58,7 @@ export const controlesRepository = {
         const data = doc.data()
         const results: any[] = data.results ?? []
         const submittedAt = data.submittedAt?.toDate() ?? new Date()
-        const riskAt = new Date(submittedAt); riskAt.setDate(riskAt.getDate() + 30)
+        const riskAt = new Date(submittedAt); riskAt.setDate(riskAt.getDate() + thresholdDays)
         return {
           id: doc.id,
           inventoryId: data.inventoryId,
@@ -72,7 +84,10 @@ export const controlesRepository = {
 
   async getControlDetail(controlId: string, associationId: string): Promise<Result<ControlDetail>> {
     try {
-      const controlDoc = await adminDb.collection('controles').doc(controlId).get()
+      const [controlDoc, thresholdDays] = await Promise.all([
+        adminDb.collection('controles').doc(controlId).get(),
+        getAlertThreshold(associationId),
+      ])
       if (!controlDoc.exists) return err('Contrôle introuvable.')
       const data = controlDoc.data()!
       // Reject if associationId stored and doesn't match (legacy docs without field are allowed through)
@@ -96,7 +111,7 @@ export const controlesRepository = {
         if (!existing || d.newExpiryDate > existing) bestCorrectionByItem.set(d.itemId, d.newExpiryDate)
       }
       const now = startOfToday()
-      const risk = todayPlusDays(30)
+      const risk = todayPlusDays(thresholdDays)
       function computeStatus(r: any): DomainItemResult['currentExpiryStatus'] {
         if (!r.expiryDate) return null
         const correction = bestCorrectionByItem.get(r.itemId)
@@ -124,7 +139,10 @@ export const controlesRepository = {
 
   async getActiveExpiryAlerts(associationId: string): Promise<Result<ExpiryAlertReport>> {
     try {
-      const inventoriesSnap = await adminDb.collection('inventaires').where('associationId', '==', associationId).get()
+      const [inventoriesSnap, thresholdDays] = await Promise.all([
+        adminDb.collection('inventaires').where('associationId', '==', associationId).get(),
+        getAlertThreshold(associationId),
+      ])
       if (inventoriesSnap.empty) return ok({ expired: [], atRisk: [] })
       const inventoryIds = inventoriesSnap.docs.map(d => d.id)
       type Entry = { itemId: string; inventoryId: string; inventoryName: string; compartmentId: string; latestExpiryDate: string; recordedAtMs: number; source: 'control' | 'correction' }
@@ -157,7 +175,7 @@ export const controlesRepository = {
         }
       }
       const now = startOfToday()
-      const risk = todayPlusDays(30)
+      const risk = todayPlusDays(thresholdDays)
       const expired: Entry[] = []
       const atRisk: Entry[] = []
       for (const entry of entries.values()) {

@@ -33,6 +33,8 @@ export async function updateAssociationSettingsUseCase(associationId: string, da
   if (!associationId) return err('Association non identifiée.')
   if (user.role !== 'superadmin' && user.associationId !== associationId) return err('Accès non autorisé.')
   if (!data.name.trim()) return err('Le nom de l\'association est obligatoire.')
+  if (data.alertThresholdDays < 1) return err('Le seuil doit être au moins 1 jour.')
+  if (data.alertIntervalDays < 1) return err("L'intervalle doit être au moins 1 jour.")
   return gestionComptesRepository.updateAssociationSettings(associationId, data)
 }
 

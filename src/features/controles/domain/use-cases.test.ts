@@ -10,6 +10,7 @@ vi.mock('../data/repository', () => ({
     getControlDetail: vi.fn(),
     getActiveExpiryAlerts: vi.fn(),
     createCorrection: vi.fn(),
+    getAlertThreshold: vi.fn(),
   },
 }))
 
@@ -78,7 +79,10 @@ describe('getActiveExpiryAlertsUseCase', () => {
 })
 
 describe('createCorrectionUseCase', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(controlesRepository.getAlertThreshold).mockResolvedValue(30)
+  })
 
   it("retourne une erreur si la date est vide", async () => {
     const result = await createCorrectionUseCase({ ...mockInput, newExpiryDate: '' }, mockUser)

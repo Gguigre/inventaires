@@ -41,7 +41,7 @@ export async function createAssociationAction(input: { name: string; adminEmail:
   return { ok: true }
 }
 
-export async function updateAssociationSettingsAction(data: { name: string; notificationEmails: string[] }) {
+export async function updateAssociationSettingsAction(data: { name: string; notificationEmails: string[]; alertThresholdDays: number; alertIntervalDays: number }) {
   const user = await getAuthenticatedUser()
   if (!user) redirect('/login')
   const result = await updateAssociationSettingsUseCase(user.associationId, data, user)

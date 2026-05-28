@@ -24,9 +24,10 @@ export async function createCorrectionUseCase(
   user: AuthenticatedUser,
 ): Promise<Result<void>> {
   if (!input.newExpiryDate) return err('La date est obligatoire.')
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() + 30)
-  if (new Date(input.newExpiryDate) <= cutoff) return err("Cette date ne résout pas l'alerte (doit être > J+30).")
   if (input.associationId !== user.associationId) return err('Non autorisé.')
+  const thresholdDays = await controlesRepository.getAlertThreshold(input.associationId)
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() + thresholdDays)
+  if (new Date(input.newExpiryDate) <= cutoff) return err(`Cette date ne résout pas l'alerte (doit être > J+${thresholdDays}).`)
   return controlesRepository.createCorrection(input)
 }

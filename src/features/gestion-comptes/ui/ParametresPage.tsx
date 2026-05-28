@@ -15,6 +15,8 @@ export function ParametresPage({ settings, adminAccounts, currentUserUid }: Para
   const {
     name, setName,
     emails, newEmail, setNewEmail, emailError, addEmail, removeEmail,
+    alertThresholdDays, setAlertThresholdDays,
+    alertIntervalDays, setAlertIntervalDays,
     isSaving, error, success, handleSave,
   } = useParametresPage(settings)
 
@@ -53,6 +55,40 @@ export function ParametresPage({ settings, adminAccounts, currentUserUid }: Para
       </section>
 
       <AdminAccountsSection initialAccounts={adminAccounts} currentUserUid={currentUserUid} />
+
+      <section className="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 className="text-base font-semibold text-slate-900 mb-4">Alertes de péremption</h2>
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="alert-threshold" className="block text-sm font-medium text-slate-700 mb-1">
+              Seuil "à risque" (jours avant expiration)
+            </label>
+            <input
+              id="alert-threshold"
+              type="number"
+              min="1"
+              value={alertThresholdDays}
+              onChange={(e) => setAlertThresholdDays(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-32 h-10 rounded-lg border-2 border-slate-200 px-3 text-sm
+                         focus:outline-none focus:border-blue-500 transition-colors"
+            />
+          </div>
+          <div>
+            <label htmlFor="alert-interval" className="block text-sm font-medium text-slate-700 mb-1">
+              Intervalle entre deux alertes mail par item (jours)
+            </label>
+            <input
+              id="alert-interval"
+              type="number"
+              min="1"
+              value={alertIntervalDays}
+              onChange={(e) => setAlertIntervalDays(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-32 h-10 rounded-lg border-2 border-slate-200 px-3 text-sm
+                         focus:outline-none focus:border-blue-500 transition-colors"
+            />
+          </div>
+        </div>
+      </section>
 
       {error && (
         <p role="alert" className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
