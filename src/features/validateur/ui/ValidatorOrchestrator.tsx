@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useCallback } from 'react'
 import type { CompartmentWithItems, Inventory } from '../domain/types'
 import { useValidatorOrchestrator } from './hooks/useValidatorOrchestrator'
 import { ProgressBar } from './ProgressBar'
@@ -9,6 +10,9 @@ import { ConfirmationScreen } from './ConfirmationScreen'
 import { ErrorScreen } from './ErrorScreen'
 import { SummaryScreen } from './SummaryScreen'
 import { CompartmentHeader } from './CompartmentHeader'
+
+const BG_SCALE = 120
+const MAX_BG_OPACITY = 0.85
 
 interface ValidatorOrchestratorProps {
   inventory: Inventory
@@ -23,6 +27,19 @@ export function ValidatorOrchestrator({ inventory, compartments }: ValidatorOrch
     setStep, recordResult, handleSubmit,
   } = useValidatorOrchestrator(inventory, compartments)
 
+  const [swipeDragX, setSwipeDragX] = useState<number | null>(null)
+  const handleDragChange = useCallback((dragX: number | null) => setSwipeDragX(dragX), [])
+
+  const bgOpacity = swipeDragX !== null
+    ? Math.min(Math.abs(swipeDragX) / BG_SCALE, MAX_BG_OPACITY)
+    : 0
+  const bgColor = swipeDragX !== null && swipeDragX > 0
+    ? `rgba(254, 243, 199, ${bgOpacity})`  // amber-100
+    : swipeDragX !== null && swipeDragX < 0
+    ? `rgba(209, 250, 229, ${bgOpacity})`  // emerald-100
+    : undefined
+  const isDragging = swipeDragX !== null
+
   if (step === 'welcome') {
     return (
       <WelcomeScreen
@@ -36,7 +53,13 @@ export function ValidatorOrchestrator({ inventory, compartments }: ValidatorOrch
 
   if (step === 'item' && currentItem) {
     return (
-      <div className="flex flex-col min-h-dvh">
+      <div
+        className="flex flex-col min-h-dvh"
+        style={{
+          backgroundColor: bgColor,
+          transition: isDragging ? 'none' : 'background-color 0.3s ease-out',
+        }}
+      >
         <ProgressBar
           currentItem={results.length + 1}
           totalItems={totalItems}
@@ -48,12 +71,15 @@ export function ValidatorOrchestrator({ inventory, compartments }: ValidatorOrch
           currentCompartment={nonEmptyCompartments.indexOf(currentCompartment) + 1}
           totalCompartments={totalCompartments}
         />
-        <ItemCard
-          key={currentItem.id}
-          item={currentItem}
-          onPresent={(expiryDate) => recordResult({ status: 'present', expiryDate })}
-          onAnomaly={(comment, expiryDate) => recordResult({ status: 'anomaly', comment, expiryDate })}
-        />
+        <div className="flex-1 flex flex-col px-2 pb-2">
+          <ItemCard
+            key={currentItem.id}
+            item={currentItem}
+            onPresent={(expiryDate) => recordResult({ status: 'present', expiryDate })}
+            onAnomaly={(comment, expiryDate) => recordResult({ status: 'anomaly', comment, expiryDate })}
+            onDragChange={handleDragChange}
+          />
+        </div>
       </div>
     )
   }

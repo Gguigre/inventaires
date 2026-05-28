@@ -10,18 +10,23 @@ interface ItemCardProps {
   item: Item
   onPresent: (expiryDate: string | undefined) => void
   onAnomaly: (comment: string, expiryDate: string | undefined) => void
+  onDragChange?: (dragX: number | null) => void
 }
 
-export function ItemCard({ item, onPresent, onAnomaly }: ItemCardProps) {
+export function ItemCard({ item, onPresent, onAnomaly, onDragChange }: ItemCardProps) {
   const {
     expiryDate, setExpiryDate, dateError,
     isModalOpen, setIsModalOpen,
-    dragX, isDragging, overlayOpacity, showAnomalyBadge, showOkBadge, cardRotate,
+    dragX, isDragging, glowOpacity, showAnomalyBadge, showOkBadge, cardRotate,
     handleMarkPresent, handleOpenAnomaly, handleConfirmAnomaly,
     handleTouchStart, handleTouchMove, handleTouchEnd,
-  } = useItemCard(item, onPresent, onAnomaly)
+  } = useItemCard(item, onPresent, onAnomaly, onDragChange)
 
   const hasPhoto = Boolean(item.photoUrl)
+  const glowRgb = dragX > 0 ? '245, 158, 11' : '16, 185, 129'
+  const boxShadow = glowOpacity > 0
+    ? `0 4px 16px rgba(0,0,0,0.06), 0 0 0 2px rgba(${glowRgb}, ${glowOpacity * 1.2}), 0 8px 40px rgba(${glowRgb}, ${glowOpacity * 0.9})`
+    : '0 4px 16px rgba(0,0,0,0.06)'
 
   return (
     <>
@@ -32,22 +37,12 @@ export function ItemCard({ item, onPresent, onAnomaly }: ItemCardProps) {
         onTouchEnd={handleTouchEnd}
         style={{
           transform: `translateX(${dragX}px) rotate(${cardRotate}deg)`,
-          transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+          transition: isDragging ? 'none' : 'transform 0.3s ease-out, box-shadow 0.3s ease-out',
           willChange: 'transform',
+          boxShadow,
         }}
-        className="flex flex-col flex-1 relative"
+        className="flex flex-col flex-1 relative rounded-2xl overflow-hidden bg-white"
       >
-        {overlayOpacity > 0 && (
-          <div
-            className="absolute inset-0 pointer-events-none z-10"
-            style={{
-              backgroundColor: dragX > 0
-                ? `rgba(245, 158, 11, ${overlayOpacity})`
-                : `rgba(16, 185, 129, ${overlayOpacity})`,
-            }}
-          />
-        )}
-
         {showAnomalyBadge && (
           <div className="absolute top-6 left-5 z-20 border-4 border-amber-500 text-amber-500 bg-white/90 rounded-xl px-3 py-1.5 font-bold text-lg -rotate-12">
             ⚠ ANOMALIE
