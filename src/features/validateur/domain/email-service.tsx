@@ -1,5 +1,6 @@
 import { render } from "@react-email/render";
 import { resend } from "@/shared/lib/resend";
+import { fromAddress } from "@/shared/lib/email-slug";
 import { ControlCompletedEmail } from "@/emails/ControlCompletedEmail";
 import type { Result } from "@/shared/domain/result";
 import { ok, err } from "@/shared/domain/result";
@@ -28,7 +29,7 @@ export async function sendControlCompletedEmail(
     );
 
     await resend.emails.send({
-      from: `Inventaire ${associationName} <onboarding@resend.dev>`,
+      from: fromAddress(associationName),
       to: recipients,
       subject: `Contrôle terminé — ${context.inventoryName}`,
       html,

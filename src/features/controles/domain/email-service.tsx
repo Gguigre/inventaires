@@ -1,5 +1,6 @@
 import { render } from '@react-email/render'
 import { resend } from '@/shared/lib/resend'
+import { fromAddress } from '@/shared/lib/email-slug'
 import { ExpiryAlertEmail } from '@/emails/ExpiryAlertEmail'
 import type { ExpiryAlertItem } from './types'
 
@@ -18,7 +19,7 @@ export async function sendExpiryAlertEmail({
   try {
     const html = await render(ExpiryAlertEmail({ expired, atRisk }))
     await resend.emails.send({
-      from: `Inventaire ${associationName} <onboarding@resend.dev>`,
+      from: fromAddress(associationName),
       to: recipients,
       subject: `⚠ Alertes péremption — ${associationName}`,
       html,
