@@ -25,8 +25,9 @@ export async function POST(request: NextRequest) {
     const bucketName = adminStorage.bucket().name
     const url = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(path)}?alt=media&token=${token}`
 
-    return NextResponse.json({ ok: true, url, path })
+    return NextResponse.json({ ok: true, url })
   } catch (error) {
-    return NextResponse.json({ ok: false, error: (error as Error).message }, { status: 500 })
+    console.error('[upload]', error)
+    return NextResponse.json({ ok: false, error: "L'upload a échoué. Veuillez réessayer." }, { status: 500 })
   }
 }
