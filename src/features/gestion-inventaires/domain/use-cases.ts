@@ -46,6 +46,13 @@ export async function deleteInventoryUseCase(
   return inventoryRepository.deleteInventory(inventoryId, associationId)
 }
 
+export async function duplicateInventoryUseCase(
+  inventoryId: string,
+  associationId: string,
+): Promise<Result<Inventory>> {
+  return inventoryRepository.duplicateInventory(inventoryId, associationId)
+}
+
 export async function createCompartmentUseCase(
   inventoryId: string,
   name: string,

@@ -4,9 +4,12 @@ import { InventoryListItem } from './InventoryListItem'
 interface InventoryListProps {
   inventories: InventoryWithCompartmentCount[]
   onCreateClick: () => void
+  duplicatingId?: string | null
+  duplicateErrors?: Record<string, string>
+  onDuplicate?: (inventoryId: string) => void
 }
 
-export function InventoryList({ inventories, onCreateClick }: InventoryListProps) {
+export function InventoryList({ inventories, onCreateClick, duplicatingId, duplicateErrors, onDuplicate }: InventoryListProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -41,7 +44,13 @@ export function InventoryList({ inventories, onCreateClick }: InventoryListProps
       ) : (
         <ul className="space-y-2" data-testid="inventory-list">
           {inventories.map((inventory) => (
-            <InventoryListItem key={inventory.id} inventory={inventory} />
+            <InventoryListItem
+              key={inventory.id}
+              inventory={inventory}
+              isDuplicating={duplicatingId === inventory.id}
+              duplicateError={duplicateErrors?.[inventory.id]}
+              onDuplicate={() => onDuplicate?.(inventory.id)}
+            />
           ))}
         </ul>
       )}

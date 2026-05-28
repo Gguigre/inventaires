@@ -1,3 +1,4 @@
+// Dépasse 120 lignes : agrège les opérations en cascade sur inventaires, emplacements et matériels.
 import { adminDb } from '@/shared/data/firebase-admin'
 import { ok, err } from '@/shared/domain/result'
 import type { Result } from '@/shared/domain/result'
@@ -122,5 +123,43 @@ export async function deleteInventory(inventoryId: string, associationId: string
     return ok(undefined)
   } catch (error) {
     return err(`Impossible de supprimer l'inventaire. Erreur: ${(error as Error).message}`)
+  }
+}
+
+export async function duplicateInventory(inventoryId: string, associationId: string): Promise<Result<Inventory>> {
+  try {
+    const invDoc = await adminDb.collection('inventaires').doc(inventoryId).get()
+    if (!invDoc.exists) return err("Cet inventaire n'existe pas.")
+    if (invDoc.data()!.associationId !== associationId) return err('Accès non autorisé.')
+
+    const newName = `Copie de ${invDoc.data()!.name as string}`
+    const newInvRef = await adminDb.collection('inventaires').add({ name: newName, associationId })
+
+    const empSnap = await adminDb.collection('emplacements').where('inventoryId', '==', inventoryId).orderBy('order').get()
+    if (empSnap.empty) return ok({ id: newInvRef.id, name: newName, associationId })
+
+    for (const empDoc of empSnap.docs) {
+      const empData = empDoc.data()
+      const newEmpRef = await adminDb.collection('emplacements').add({
+        name: empData.name, order: empData.order, inventoryId: newInvRef.id,
+      })
+      const matSnap = await adminDb.collection('materiels').where('compartmentId', '==', empDoc.id).get()
+      if (matSnap.empty) continue
+      for (let i = 0; i < matSnap.docs.length; i += 490) {
+        const batch = adminDb.batch()
+        matSnap.docs.slice(i, i + 490).forEach((matDoc) => {
+          const d = matDoc.data()
+          batch.set(adminDb.collection('materiels').doc(), {
+            name: d.name, photoUrl: d.photoUrl ?? '', hasExpiry: d.hasExpiry ?? false,
+            isCritical: d.isCritical ?? false, order: d.order ?? 0, compartmentId: newEmpRef.id,
+          })
+        })
+        await batch.commit()
+      }
+    }
+
+    return ok({ id: newInvRef.id, name: newName, associationId })
+  } catch (error) {
+    return err(`Impossible de dupliquer l'inventaire. Erreur: ${(error as Error).message}`)
   }
 }

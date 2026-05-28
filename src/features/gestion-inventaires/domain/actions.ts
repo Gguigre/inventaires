@@ -36,6 +36,13 @@ export async function deleteInventoryAction(inventoryId: string): Promise<Result
   if (result.ok) revalidatePath(BASE)
   return result
 }
+export async function duplicateInventoryAction(inventoryId: string): Promise<Result<Inventory>> {
+  const user = await getAuthenticatedUser()
+  if (!user) return err('Non authentifié.')
+  const result = await uc.duplicateInventoryUseCase(inventoryId, user.associationId)
+  if (result.ok) revalidatePath(BASE)
+  return result
+}
 export async function createCompartmentAction(inventoryId: string, name: string): Promise<Result<Compartment>> {
   const user = await getAuthenticatedUser()
   if (!user) return err('Non authentifié.')

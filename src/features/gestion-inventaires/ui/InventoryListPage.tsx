@@ -10,11 +10,11 @@ interface InventoryListPageProps {
 }
 
 export function InventoryListPage({ inventories }: InventoryListPageProps) {
-  const { showCreate, isPending, createError, handleCreate, openCreate, closeCreate } = useInventoryListPage()
+  const { showCreate, isPending, createError, handleCreate, openCreate, closeCreate, duplicatingId, duplicateErrors, handleDuplicate } = useInventoryListPage()
 
   return (
     <>
-      <InventoryList inventories={inventories} onCreateClick={openCreate} />
+      <InventoryList inventories={inventories} onCreateClick={openCreate} duplicatingId={duplicatingId} duplicateErrors={duplicateErrors} onDuplicate={handleDuplicate} />
       <CreateInventoryForm
         isOpen={showCreate}
         isSubmitting={isPending}
