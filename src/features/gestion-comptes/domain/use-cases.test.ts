@@ -233,7 +233,7 @@ describe('inviteAdminUseCase', () => {
 
   it("envoie l'email d'invitation pour des données valides", async () => {
     vi.mocked(gestionComptesRepository.listAdminAccounts).mockResolvedValue({ ok: true, value: [] })
-    vi.mocked(gestionComptesRepository.createAdminAccount).mockResolvedValue({ ok: true, value: { uid: 'u-3', resetLink: 'https://reset' } })
+    vi.mocked(gestionComptesRepository.createAdminAccount).mockResolvedValue({ ok: true, value: { resetLink: 'https://reset' } })
     vi.mocked(gestionComptesRepository.getAssociationSettings).mockResolvedValue({ ok: true, value: { name: 'Mon Asso', notificationEmails: [] } })
     vi.mocked(emailService.sendInvitationEmail).mockResolvedValue()
     const result = await inviteAdminUseCase('nouveau@b.com', admin)
@@ -243,7 +243,7 @@ describe('inviteAdminUseCase', () => {
 
   it("retourne ok même si l'envoi d'email échoue (best-effort)", async () => {
     vi.mocked(gestionComptesRepository.listAdminAccounts).mockResolvedValue({ ok: true, value: [] })
-    vi.mocked(gestionComptesRepository.createAdminAccount).mockResolvedValue({ ok: true, value: { uid: 'u-3', resetLink: 'https://reset' } })
+    vi.mocked(gestionComptesRepository.createAdminAccount).mockResolvedValue({ ok: true, value: { resetLink: 'https://reset' } })
     vi.mocked(gestionComptesRepository.getAssociationSettings).mockResolvedValue({ ok: true, value: { name: 'Mon Asso', notificationEmails: [] } })
     vi.mocked(emailService.sendInvitationEmail).mockRejectedValue(new Error('timeout'))
     const result = await inviteAdminUseCase('nouveau@b.com', admin)

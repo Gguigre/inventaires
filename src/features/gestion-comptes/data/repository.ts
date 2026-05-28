@@ -90,14 +90,14 @@ export const gestionComptesRepository = {
     }
   },
 
-  async createAdminAccount(email: string, associationId: string): Promise<Result<{ uid: string; resetLink: string }>> {
+  async createAdminAccount(email: string, associationId: string): Promise<Result<{ resetLink: string }>> {
     let uid: string | undefined
     try {
       const authUser = await adminAuth.createUser({ email })
       uid = authUser.uid
       await adminDb.collection('users').doc(uid).set({ associationId, role: 'admin' })
       const resetLink = await adminAuth.generatePasswordResetLink(email)
-      return ok({ uid, resetLink })
+      return ok({ resetLink })
     } catch (error) {
       const code = (error as { code?: string }).code
       if (code === 'auth/email-already-exists') return err('Un compte existe déjà avec cet email.')
