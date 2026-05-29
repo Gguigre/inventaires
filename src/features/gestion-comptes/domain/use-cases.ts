@@ -12,14 +12,14 @@ export async function listAssociationsUseCase(user: AuthenticatedUser): Promise<
   return gestionComptesRepository.listAssociations()
 }
 
-export async function createAssociationUseCase(input: CreateAssociationInput, user: AuthenticatedUser): Promise<Result<void>> {
+export async function createAssociationUseCase(input: CreateAssociationInput, user: AuthenticatedUser, loginUrl?: string): Promise<Result<void>> {
   if (user.role !== 'superadmin') return err('Accès non autorisé.')
   if (!input.name.trim()) return err('Le nom de l\'association est obligatoire.')
   if (!EMAIL_RE.test(input.adminEmail)) return err('Email invalide.')
   const result = await gestionComptesRepository.createAssociation(input)
   if (!result.ok) return result
   if (result.value.resetLink) {
-    try { await sendInvitationEmail(input.adminEmail, input.name, result.value.resetLink) } catch { /* ignored */ }
+    try { await sendInvitationEmail(input.adminEmail, input.name, result.value.resetLink, loginUrl) } catch { /* ignored */ }
   }
   return ok(undefined)
 }
@@ -44,7 +44,7 @@ export async function listAdminAccountsUseCase(associationId: string, user: Auth
   return gestionComptesRepository.listAdminAccounts(associationId)
 }
 
-export async function inviteAdminUseCase(email: string, user: AuthenticatedUser): Promise<Result<void>> {
+export async function inviteAdminUseCase(email: string, user: AuthenticatedUser, loginUrl?: string): Promise<Result<void>> {
   if (!EMAIL_RE.test(email)) return err('Email invalide.')
   const accountsResult = await gestionComptesRepository.listAdminAccounts(user.associationId)
   if (accountsResult.ok && accountsResult.value.some((a) => a.email.toLowerCase() === email.toLowerCase())) {
@@ -55,7 +55,7 @@ export async function inviteAdminUseCase(email: string, user: AuthenticatedUser)
   const assocResult = await gestionComptesRepository.getAssociationSettings(user.associationId)
   const assocName = assocResult.ok ? assocResult.value.name : 'votre association'
   if (result.value.resetLink) {
-    try { await sendInvitationEmail(email, assocName, result.value.resetLink) } catch { /* ignored */ }
+    try { await sendInvitationEmail(email, assocName, result.value.resetLink, loginUrl) } catch { /* ignored */ }
   }
   return ok(undefined)
 }
