@@ -35,7 +35,7 @@ export const gestionComptesRepository = {
     }
   },
 
-  async createAssociation(input: CreateAssociationInput): Promise<Result<{ resetLink: string }>> {
+  async createAssociation(input: CreateAssociationInput): Promise<Result<{ resetLink: string | undefined }>> {
     let uid: string | undefined
     try {
       const authUser = await adminAuth.createUser({ email: input.adminEmail })
@@ -52,7 +52,7 @@ export const gestionComptesRepository = {
       return ok({ resetLink })
     } catch (error) {
       console.error(`[createAssociation] Compte créé (${uid}) mais génération du lien échouée.`, error)
-      return ok({ resetLink: '' })
+      return ok({ resetLink: undefined })
     }
   },
 
@@ -106,7 +106,7 @@ export const gestionComptesRepository = {
     }
   },
 
-  async createAdminAccount(email: string, associationId: string): Promise<Result<{ resetLink: string }>> {
+  async createAdminAccount(email: string, associationId: string): Promise<Result<{ resetLink: string | undefined }>> {
     let uid: string | undefined
     try {
       const authUser = await adminAuth.createUser({ email })
@@ -123,7 +123,7 @@ export const gestionComptesRepository = {
       return ok({ resetLink })
     } catch (error) {
       console.error(`[createAdminAccount] Compte créé (${uid}) mais génération du lien échouée.`, error)
-      return ok({ resetLink: '' })
+      return ok({ resetLink: undefined })
     }
   },
 
