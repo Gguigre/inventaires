@@ -116,6 +116,7 @@ export const gestionComptesRepository = {
       const code = (error as { code?: string }).code
       if (code === 'auth/email-already-exists') return err('Un compte existe déjà avec cet email.')
       if (uid) console.error(`[createAdminAccount] Compte Auth créé (${uid}) mais échec Firestore`, error)
+      else console.error('[createAdminAccount]', error)
       return err(`Impossible de créer le compte. Erreur: ${(error as Error).message}`)
     }
     try {
