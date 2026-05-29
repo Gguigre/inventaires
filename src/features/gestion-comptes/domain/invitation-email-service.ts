@@ -1,14 +1,17 @@
 // On utilise Resend pour contrôler le contenu et le sujet des emails auth.
+import { render } from '@react-email/render'
 import { resend } from '@/shared/lib/resend'
 import { fromAddress } from '@/shared/lib/email-slug'
+import { WelcomeAdminEmail } from '@/emails/WelcomeAdminEmail'
 
 export async function sendInvitationEmail(adminEmail: string, associationName: string, resetLink: string) {
   try {
+    const html = await render(WelcomeAdminEmail({ associationName, resetLink }))
     await resend.emails.send({
       from: fromAddress(associationName),
       to: adminEmail,
       subject: `Invitation — ${associationName}`,
-      text: `Bonjour,\n\nVous avez été invité à gérer l'association "${associationName}".\n\nDéfinissez votre mot de passe :\n${resetLink}\n\nCe lien expire dans 24 heures.`,
+      html,
     })
   } catch (e) {
     console.error('[sendInvitationEmail] Envoi échoué:', e)
