@@ -19,6 +19,10 @@ export async function getActiveExpiryAlertsUseCase(associationId: string, thresh
   return controlesRepository.getActiveExpiryAlerts(associationId, thresholdDays)
 }
 
+export async function getAlertThresholdUseCase(associationId: string): Promise<number> {
+  return controlesRepository.getAlertThreshold(associationId)
+}
+
 export async function createCorrectionUseCase(
   input: CreateCorrectionInput,
   user: AuthenticatedUser,

@@ -14,12 +14,13 @@ import { formatDate, formatDateTime } from '@/shared/lib/format'
 interface ControlsListPageProps {
   controls: ControlSummary[]
   alerts: ExpiryAlertReport
+  alertThresholdDays: number
 }
 
-export function ControlsListPage({ controls, alerts }: ControlsListPageProps) {
+export function ControlsListPage({ controls, alerts, alertThresholdDays }: ControlsListPageProps) {
   const router = useRouter()
   const { paginatedControls, currentPage, totalPages, goToPage } = useControlsListPage(controls)
-  const correction = useCorrectionModal(() => router.refresh())
+  const correction = useCorrectionModal(() => router.refresh(), alertThresholdDays)
 
   const pendingByInventory = new Map<string, number>()
   for (const item of [...alerts.expired, ...alerts.atRisk]) {

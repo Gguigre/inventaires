@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/shared/lib/auth'
-import { listControlsUseCase, getActiveExpiryAlertsUseCase } from '@/features/controles/domain/use-cases'
+import { listControlsUseCase, getActiveExpiryAlertsUseCase, getAlertThresholdUseCase } from '@/features/controles/domain/use-cases'
 import { ControlsListPage } from '@/features/controles/ui/ControlsListPage'
 
 export default async function ControlesPage() {
@@ -8,9 +8,10 @@ export default async function ControlesPage() {
   if (!user) redirect('/login')
   if (user.role === 'superadmin' && !user.associationId) redirect('/admin')
 
-  const [controlsResult, alertsResult] = await Promise.all([
+  const [controlsResult, alertsResult, alertThresholdDays] = await Promise.all([
     listControlsUseCase(user.associationId),
     getActiveExpiryAlertsUseCase(user.associationId),
+    getAlertThresholdUseCase(user.associationId),
   ])
 
   if (!controlsResult.ok) {
@@ -21,6 +22,7 @@ export default async function ControlesPage() {
     <ControlsListPage
       controls={controlsResult.value}
       alerts={alertsResult.ok ? alertsResult.value : { expired: [], atRisk: [] }}
+      alertThresholdDays={alertThresholdDays}
     />
   )
 }

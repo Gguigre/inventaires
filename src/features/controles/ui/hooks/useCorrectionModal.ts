@@ -5,7 +5,7 @@ import type { ExpiryAlertItem } from '../../domain/types'
 import { createCorrectionAction } from '../../domain/actions'
 import { DEFAULT_ALERT_THRESHOLD_DAYS } from '@/shared/lib/alert-defaults'
 
-export function useCorrectionModal(onSuccess: () => void) {
+export function useCorrectionModal(onSuccess: () => void, alertThresholdDays = DEFAULT_ALERT_THRESHOLD_DAYS) {
   const [selectedItem, setSelectedItem] = useState<ExpiryAlertItem | null>(null)
   const [dateValue, setDateValue] = useState('')
   const [dateError, setDateError] = useState<string | undefined>()
@@ -33,9 +33,9 @@ export function useCorrectionModal(onSuccess: () => void) {
     if (!selectedItem) return
     if (!dateValue) { setDateError('La date est obligatoire.'); return }
     const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() + DEFAULT_ALERT_THRESHOLD_DAYS)
+    cutoff.setDate(cutoff.getDate() + alertThresholdDays)
     if (new Date(dateValue) <= cutoff) {
-      setDateError(`Cette date ne résout pas l'alerte (doit être > J+${DEFAULT_ALERT_THRESHOLD_DAYS}).`)
+      setDateError(`Cette date ne résout pas l'alerte (doit être > J+${alertThresholdDays}).`)
       return
     }
     setIsSubmitting(true)

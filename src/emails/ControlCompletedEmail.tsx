@@ -8,17 +8,15 @@ import {
   Section,
   Text,
 } from '@react-email/components'
-import { DEFAULT_ALERT_THRESHOLD_DAYS } from '@/shared/lib/alert-defaults'
-
 function formatDate(iso: string) {
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y}`
 }
 
-function expiryStatus(iso: string): 'expired' | 'at-risk' | 'ok' {
+function expiryStatus(iso: string, alertThresholdDays: number): 'expired' | 'at-risk' | 'ok' {
   const date = new Date(iso)
   const now = new Date(); now.setHours(0, 0, 0, 0)
-  const risk = new Date(now); risk.setDate(risk.getDate() + DEFAULT_ALERT_THRESHOLD_DAYS)
+  const risk = new Date(now); risk.setDate(risk.getDate() + alertThresholdDays)
   if (date <= now) return 'expired'
   if (date <= risk) return 'at-risk'
   return 'ok'
@@ -37,6 +35,7 @@ interface ControlCompletedEmailProps {
   itemCount: number
   anomalies: { itemName: string; compartmentName: string; comment: string }[]
   expiryDates: { itemName: string; compartmentName: string; date: string }[]
+  alertThresholdDays: number
 }
 
 export function ControlCompletedEmail({
@@ -46,6 +45,7 @@ export function ControlCompletedEmail({
   itemCount,
   anomalies,
   expiryDates,
+  alertThresholdDays,
 }: ControlCompletedEmailProps) {
   return (
     <Html>
@@ -89,7 +89,7 @@ export function ControlCompletedEmail({
                 Dates de péremption saisies
               </Heading>
               {expiryDates.map((e, i) => {
-                const status = expiryStatus(e.date)
+                const status = expiryStatus(e.date, alertThresholdDays)
                 const label = STATUS_LABEL[status]
                 return (
                   <Text key={i} style={{ marginBottom: '8px', color: '#1e293b' }}>

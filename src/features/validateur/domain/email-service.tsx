@@ -13,6 +13,7 @@ export async function sendControlCompletedEmail(
   recipients: string[],
   associationName: string,
   controlDate: string,
+  alertThresholdDays: number,
 ): Promise<Result<void>> {
   if (recipients.length === 0) return ok(undefined);
 
@@ -25,6 +26,7 @@ export async function sendControlCompletedEmail(
         itemCount,
         anomalies: context.anomalies,
         expiryDates: context.expiryDates,
+        alertThresholdDays,
       }),
     );
 

@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/shared/data/firebase-admin";
 import { chunkArray, FIRESTORE_IN_LIMIT } from "@/shared/lib/array";
+import { DEFAULT_ALERT_THRESHOLD_DAYS } from "@/shared/lib/alert-defaults";
 import type { Result } from "@/shared/domain/result";
 import { ok, err } from "@/shared/domain/result";
 import type {
@@ -127,16 +128,17 @@ export const validatorRepository = {
     }
   },
 
-  async getAssociationEmails(associationId: string): Promise<Result<{ emails: string[]; name: string }>> {
+  async getAssociationEmails(associationId: string): Promise<Result<{ emails: string[]; name: string; alertThresholdDays: number }>> {
     try {
       const doc = await adminDb
         .collection("associations")
         .doc(associationId)
         .get();
-      if (!doc.exists) return ok({ emails: [], name: '' });
-      return ok({ emails: doc.data()?.notificationEmails ?? [], name: doc.data()?.name ?? '' });
+      if (!doc.exists) return ok({ emails: [], name: '', alertThresholdDays: DEFAULT_ALERT_THRESHOLD_DAYS });
+      const d = doc.data()!
+      return ok({ emails: d.notificationEmails ?? [], name: d.name ?? '', alertThresholdDays: (d.alertThresholdDays as number | undefined) ?? DEFAULT_ALERT_THRESHOLD_DAYS });
     } catch {
-      return ok({ emails: [], name: '' }); // Non-blocking: missing emails don't fail the control
+      return ok({ emails: [], name: '', alertThresholdDays: DEFAULT_ALERT_THRESHOLD_DAYS }); // Non-blocking
     }
   },
 
