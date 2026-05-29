@@ -1,6 +1,7 @@
 /**
  * Tests E2E du parcours validateur.
- * Prérequis : seed appliqué (`npx tsx scripts/seed-dev.ts`) et serveur dev actif.
+ * Prérequis : données Firestore avec IDs fixes (voir ci-dessous) + serveur dev actif.
+ * Ces données doivent exister en base (créées manuellement ou via un script de seed).
  * Inventaire de test : inv-e2e (Sac E2E)
  *   emp-e2e-1 "Poche avant" : mat-e2e-1 "SHA 100ml" (isCritical), mat-e2e-2 "Gants"
  *   emp-e2e-2 "Poche arrière" : mat-e2e-3 "Brancard"
