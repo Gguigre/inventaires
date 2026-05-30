@@ -8,10 +8,10 @@ export default async function ControlesPage() {
   if (!user) redirect('/login')
   if (user.role === 'superadmin' && !user.associationId) redirect('/admin')
 
-  const [controlsResult, alertsResult, alertThresholdDays] = await Promise.all([
+  const alertThresholdDays = await getAlertThresholdUseCase(user.associationId)
+  const [controlsResult, alertsResult] = await Promise.all([
     listControlsUseCase(user.associationId),
-    getActiveExpiryAlertsUseCase(user.associationId),
-    getAlertThresholdUseCase(user.associationId),
+    getActiveExpiryAlertsUseCase(user.associationId, alertThresholdDays),
   ])
 
   if (!controlsResult.ok) {
