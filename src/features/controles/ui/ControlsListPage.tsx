@@ -25,6 +25,11 @@ export function ControlsListPage({ controls, alerts, alertThresholdDays }: Contr
   const correction = useCorrectionModal(() => router.refresh(), alertThresholdDays)
   const anomalyCorrection = useAnomalyCorrectionModal(() => router.refresh())
 
+  const toFixByControl = new Map<string, number>()
+  for (const item of alerts.anomalies) {
+    toFixByControl.set(item.controlId, (toFixByControl.get(item.controlId) ?? 0) + 1)
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900 mb-6">Contrôles</h1>
@@ -55,6 +60,7 @@ export function ControlsListPage({ controls, alerts, alertThresholdDays }: Contr
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {paginatedControls.map((control) => {
+                  const toFixCount = toFixByControl.get(control.id) ?? 0
                   return (
                   <tr key={control.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-slate-900">
@@ -75,8 +81,8 @@ export function ControlsListPage({ controls, alerts, alertThresholdDays }: Contr
                         : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {control.anomalyCount > 0
-                        ? <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">{control.anomalyCount}</span>
+                      {toFixCount > 0
+                        ? <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">{toFixCount}</span>
                         : <span className="text-slate-300">—</span>}
                     </td>
                   </tr>
