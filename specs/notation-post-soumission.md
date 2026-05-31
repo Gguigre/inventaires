@@ -1,81 +1,78 @@
-# Spec — Notation / feedback post-soumission
+# Spec — Notation post-soumission
 
-## Contexte
+## Objectif
 
-Après soumission d'un contrôle, le secouriste voit une page de confirmation. On souhaite recueillir
-un feedback sur le déroulement du contrôle (clarté des instructions, matériel bien identifié, etc.)
-pour améliorer l'expérience au fil du temps.
+Recueillir un feedback du secouriste juste après la soumission d'un contrôle,
+pour mesurer la qualité perçue du déroulement et identifier les points à améliorer.
 
-## Flow
+## Utilisateurs concernés
 
-```
-Soumission réussie
-  → RatingScreen  (nouveau step 'rating')
-    → si soumis ou ignoré → ConfirmationScreen
-```
+- [x] Secouriste (frontoffice, non authentifié)
 
-## RatingScreen
+## Parcours principal
 
-### Notation
+1. Le secouriste soumet le contrôle (bouton "Soumettre le contrôle" sur le récapitulatif).
+2. La soumission réussit — au lieu de l'écran de confirmation, un écran de notation s'affiche.
+3. Le secouriste sélectionne une note de 1 à 5 étoiles.
+4. Si la note est inférieure à 5, il saisit un commentaire (obligatoire).
+5. Il appuie sur "Envoyer" — le feedback est enregistré.
+6. L'écran de confirmation habituel s'affiche.
 
-- 5 étoiles interactives (tap pour sélectionner).
-- La note sélectionnée se distingue visuellement des autres (remplissage, couleur).
-- Aucune note pré-sélectionnée à l'ouverture.
+## Parcours alternatifs et edge cases
 
-### Commentaire
+- Si le secouriste ne souhaite pas noter → bouton "Passer" : aucun feedback enregistré, affichage direct de la confirmation.
+- Si aucune étoile n'est sélectionnée → bouton "Envoyer" désactivé.
+- Si note < 5 et commentaire vide → message d'erreur sous le champ, soumission bloquée.
+- Si l'envoi du feedback échoue (réseau) → message d'erreur affiché, bouton "Réessayer", le secouriste peut aussi "Passer".
+- Si le secouriste clique "Passer" pendant une soumission en cours → bouton désactivé (isSubmitting).
 
-- Champ texte libre, placeholder "Qu'est-ce qui pourrait être amélioré ?".
-- **Obligatoire si note < 5** — message d'erreur affiché sous le champ si absent à la soumission.
-- Facultatif si note = 5.
+## Règles métier
 
-### Boutons
+- La notation est **facultative** : un secouriste peut toujours passer sans noter.
+- Le commentaire est **obligatoire pour toute note strictement inférieure à 5**.
+- La note doit être un entier entre 1 et 5 inclus.
+- L'échec de l'enregistrement du feedback **ne bloque pas** la confirmation du contrôle : "Passer" reste accessible.
+- Le feedback est lié au `controlId` du contrôle qui vient d'être soumis.
 
-- **Envoyer** — soumet la note (+ commentaire si renseigné). Grisé si aucune étoile sélectionnée.
-- **Passer** (lien discret, pas un bouton principal) — ignore le feedback et va à `ConfirmationScreen`.
+## Composants UI à créer
 
-### États du bouton Envoyer
+- `RatingScreen` — écran de notation : 5 étoiles interactives, champ commentaire, bouton Envoyer, lien Passer
+- `hooks/useRatingScreen` — état des étoiles, commentaire, soumission, gestion erreurs
 
-| Condition | État |
-|-----------|------|
-| Aucune étoile sélectionnée | Désactivé |
-| Note < 5, commentaire vide | Activé mais affiche erreur à la soumission |
-| Note 5 ou (note < 5 + commentaire) | Soumission → ConfirmationScreen |
+## Use cases à implémenter
 
-## Modèle de données
+- `submitFeedbackUseCase(submission: FeedbackSubmission)` → `Result<void>`
+  - Valide que `rating` est entre 1 et 5
+  - Valide que `comment` est renseigné si `rating < 5`
+  - Délègue à `validatorRepository.saveFeedback`
 
-Nouvelle collection Firestore : **`feedbacks`**
+## Données
+
+Collection Firestore : **`feedbacks`**
 
 ```
 feedbacks/{id}
-  controlId   : string   — référence au contrôle associé
-  rating      : number   — 1 à 5
-  comment     : string   — '' si absent
+  controlId   : string    — référence au contrôle associé
+  rating      : number    — entier 1 à 5
+  comment     : string    — chaîne vide si non renseigné
   submittedAt : Timestamp
 ```
 
-Pas d'associationId ni d'inventoryId stockés : le `controlId` suffit pour joindre.
+Modification du store Zustand `useValidatorStore` :
+- Ajout du step `'rating'` dans `ValidatorStep`
+- Ajout du champ `controlId: string` et son setter `setControlId`
 
-## Composants à créer
+Modification de `submitControlAction` :
+- Retourne `Result<{ controlId: string }>` (au lieu de `Result<void>`)
+  pour permettre au store de mémoriser l'identifiant du contrôle soumis.
 
-| Fichier | Rôle |
-|---------|------|
-| `RatingScreen.tsx` | Écran notation (coquille visuelle) |
-| `hooks/useRatingScreen.ts` | État étoiles + commentaire + soumission |
+## Notifications mail
 
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---------|-----------|
-| `useValidatorStore.ts` | Nouveau step `'rating'` dans `ValidatorStep` ; nouveau champ `controlId: string` ; setter `setControlId` |
-| `useValidatorOrchestrator.ts` | `handleSubmit` stocke le `controlId` retourné ; `setStep('rating')` au lieu de `'confirmation'` |
-| `ValidatorOrchestrator.tsx` | Nouveau cas `step === 'rating'` → `<RatingScreen>` |
-| `domain/actions.ts` | Nouvelle `submitFeedbackAction` |
-| `domain/use-cases.ts` | Nouveau `submitFeedbackUseCase` |
-| `data/repository.ts` | Nouvelle méthode `saveFeedback` |
-| `domain/types.ts` | Nouveau type `FeedbackSubmission` |
+Aucune.
 
 ## Hors scope
 
-- Dashboard de consultation des feedbacks (feature future).
+- Consultation des feedbacks dans le backoffice.
 - Notification par email en cas de mauvaise note.
-- Modification d'un feedback déjà soumis.
+- Modification ou suppression d'un feedback soumis.
+- Affichage de statistiques de satisfaction.

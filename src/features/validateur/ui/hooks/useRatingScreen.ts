@@ -11,7 +11,7 @@ export function useRatingScreen(controlId: string, onDone: () => void) {
   const [error, setError] = useState<string | undefined>()
 
   async function handleSubmit() {
-    if (!rating) return
+    if (rating === null) return
     if (rating < 5 && !comment.trim()) {
       setCommentError('Un commentaire est requis pour une note inférieure à 5.')
       return

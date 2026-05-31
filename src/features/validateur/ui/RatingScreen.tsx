@@ -29,7 +29,11 @@ export function RatingScreen({ controlId, onDone }: RatingScreenProps) {
       </div>
 
       <div className="mb-6">
+        <label htmlFor="input-feedback-comment" className="block text-sm font-medium text-slate-700 mb-1.5">
+          Commentaire {rating !== null && rating < 5 ? <span className="text-red-500">*</span> : <span className="text-slate-400">(facultatif)</span>}
+        </label>
         <textarea
+          id="input-feedback-comment"
           value={comment}
           onChange={(e) => handleCommentChange(e.target.value)}
           placeholder="Qu'est-ce qui pourrait être amélioré ?"
@@ -56,7 +60,7 @@ export function RatingScreen({ controlId, onDone }: RatingScreenProps) {
       <button
         onClick={onDone}
         disabled={isSubmitting}
-        className="text-slate-400 text-sm text-center hover:underline underline-offset-2"
+        className="text-slate-400 text-sm text-center underline underline-offset-2 disabled:opacity-40"
       >
         Passer
       </button>
