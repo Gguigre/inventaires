@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ItemResult } from '../../domain/types'
 
-export type ValidatorStep = 'welcome' | 'item' | 'summary' | 'confirmation'
+export type ValidatorStep = 'welcome' | 'item' | 'summary' | 'rating' | 'confirmation'
 
 interface ValidatorStore {
   inventoryId: string
@@ -12,6 +12,7 @@ interface ValidatorStore {
   isSubmitting: boolean
   submissionError: string | undefined
   submittedAt: string
+  controlId: string
   init: (inventoryId: string) => void
   setStep: (step: ValidatorStep) => void
   setCompartmentIndex: (i: number) => void
@@ -20,6 +21,7 @@ interface ValidatorStore {
   setIsSubmitting: (v: boolean) => void
   setSubmissionError: (e: string | undefined) => void
   setSubmittedAt: (t: string) => void
+  setControlId: (id: string) => void
 }
 
 const INITIAL = {
@@ -31,6 +33,7 @@ const INITIAL = {
   isSubmitting: false,
   submissionError: undefined as string | undefined,
   submittedAt: '',
+  controlId: '',
 }
 
 export const useValidatorStore = create<ValidatorStore>((set) => ({
@@ -43,4 +46,5 @@ export const useValidatorStore = create<ValidatorStore>((set) => ({
   setIsSubmitting: (isSubmitting) => set({ isSubmitting }),
   setSubmissionError: (submissionError) => set({ submissionError }),
   setSubmittedAt: (submittedAt) => set({ submittedAt }),
+  setControlId: (controlId) => set({ controlId }),
 }))

@@ -27,6 +27,20 @@ export function useValidatorOrchestrator(
   const currentCompartment = nonEmptyCompartments[store.compartmentIndex]
   const currentItem = currentCompartment?.items[store.itemIndex]
 
+  const canGoBack = initialized && (store.compartmentIndex > 0 || store.itemIndex > 0)
+
+  function goBack() {
+    const prevResults = store.results.slice(0, -1)
+    store.setResults(prevResults)
+    if (store.itemIndex > 0) {
+      store.setItemIndex(store.itemIndex - 1)
+    } else {
+      const prevCompartment = nonEmptyCompartments[store.compartmentIndex - 1]
+      store.setCompartmentIndex(store.compartmentIndex - 1)
+      store.setItemIndex(prevCompartment.items.length - 1)
+    }
+  }
+
   function advance(updatedResults: ItemResult[]) {
     const nextItem = store.itemIndex + 1
     if (nextItem < currentCompartment.items.length) {
@@ -79,8 +93,9 @@ export function useValidatorOrchestrator(
     )
     store.setIsSubmitting(false)
     if (!result.ok) { store.setSubmissionError(result.error); return }
+    store.setControlId(result.value.controlId)
     store.setSubmittedAt(new Date().toLocaleString('fr-FR'))
-    store.setStep('confirmation')
+    store.setStep('rating')
   }
 
   return {
@@ -89,13 +104,16 @@ export function useValidatorOrchestrator(
     isSubmitting: store.isSubmitting,
     submissionError: store.submissionError,
     submittedAt: store.submittedAt,
+    controlId: store.controlId,
     nonEmptyCompartments,
     totalCompartments,
     totalItems,
     currentCompartment,
     currentItem,
+    canGoBack,
     setStep: store.setStep,
     recordResult,
+    goBack,
     handleSubmit,
   }
 }

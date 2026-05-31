@@ -7,6 +7,7 @@ import { ProgressBar } from './ProgressBar'
 import { ItemCard } from './ItemCard'
 import { WelcomeScreen } from './WelcomeScreen'
 import { ConfirmationScreen } from './ConfirmationScreen'
+import { RatingScreen } from './RatingScreen'
 import { ErrorScreen } from './ErrorScreen'
 import { SummaryScreen } from './SummaryScreen'
 import { CompartmentHeader } from './CompartmentHeader'
@@ -21,10 +22,10 @@ interface ValidatorOrchestratorProps {
 
 export function ValidatorOrchestrator({ inventory, compartments }: ValidatorOrchestratorProps) {
   const {
-    step, results, isSubmitting, submissionError, submittedAt,
+    step, results, isSubmitting, submissionError, submittedAt, controlId,
     nonEmptyCompartments, totalCompartments, totalItems,
     currentCompartment, currentItem,
-    setStep, recordResult, handleSubmit,
+    canGoBack, setStep, recordResult, goBack, handleSubmit,
   } = useValidatorOrchestrator(inventory, compartments)
 
   const [swipeDragX, setSwipeDragX] = useState<number | null>(null)
@@ -71,6 +72,11 @@ export function ValidatorOrchestrator({ inventory, compartments }: ValidatorOrch
           currentCompartment={nonEmptyCompartments.indexOf(currentCompartment) + 1}
           totalCompartments={totalCompartments}
         />
+        {canGoBack && (
+          <button onClick={goBack} className="px-5 py-2 text-sm text-slate-400 text-left">
+            ← Précédent
+          </button>
+        )}
         <div className="flex-1 flex flex-col px-2 pb-2">
           <ItemCard
             key={currentItem.id}
@@ -94,6 +100,10 @@ export function ValidatorOrchestrator({ inventory, compartments }: ValidatorOrch
         error={submissionError}
       />
     )
+  }
+
+  if (step === 'rating') {
+    return <RatingScreen controlId={controlId} onDone={() => setStep('confirmation')} />
   }
 
   if (step === 'confirmation') {
