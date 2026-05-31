@@ -7,6 +7,7 @@ import { ok, err } from "@/shared/domain/result";
 import type {
   CompartmentWithItems,
   ControlSubmission,
+  FeedbackSubmission,
   Inventory,
   Item,
 } from "../domain/types";
@@ -137,6 +138,20 @@ export const validatorRepository = {
       return ok({ emails: d.notificationEmails ?? [], name: d.name ?? '', alertThresholdDays: (d.alertThresholdDays as number | undefined) ?? DEFAULT_ALERT_THRESHOLD_DAYS });
     } catch {
       return ok({ emails: [], name: '', alertThresholdDays: DEFAULT_ALERT_THRESHOLD_DAYS }); // Non-blocking
+    }
+  },
+
+  async saveFeedback(submission: FeedbackSubmission): Promise<Result<void>> {
+    try {
+      await adminDb.collection("feedbacks").add({
+        controlId: submission.controlId,
+        rating: submission.rating,
+        comment: submission.comment,
+        submittedAt: FieldValue.serverTimestamp(),
+      })
+      return ok(undefined)
+    } catch (error) {
+      return err(`Impossible d'enregistrer le feedback. Erreur: ${(error as Error).message}`)
     }
   },
 

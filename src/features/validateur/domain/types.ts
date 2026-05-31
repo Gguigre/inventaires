@@ -41,3 +41,9 @@ export type ControlEmailContext = {
   anomalies: { itemName: string; compartmentName: string; comment: string }[]
   expiryDates: { itemName: string; compartmentName: string; date: string }[]
 }
+
+export type FeedbackSubmission = {
+  controlId: string
+  rating: number
+  comment: string
+}

@@ -1,16 +1,15 @@
 'use server'
 
-import { ok } from '@/shared/domain/result'
 import type { Result } from '@/shared/domain/result'
-import { submitControlUseCase } from './use-cases'
+import { submitControlUseCase, submitFeedbackUseCase } from './use-cases'
 import { sendControlCompletedEmail } from './email-service'
 import { validatorRepository } from '../data/repository'
-import type { ControlEmailContext, ControlSubmission } from './types'
+import type { ControlEmailContext, ControlSubmission, FeedbackSubmission } from './types'
 
 export async function submitControlAction(
   submission: ControlSubmission,
   emailContext: ControlEmailContext,
-): Promise<Result<void>> {
+): Promise<Result<{ controlId: string }>> {
   // Fetch associationId first so it can be stored in the control document
   const assocResult = await validatorRepository.getInventoryAssociationId(submission.inventoryId)
   const associationId = assocResult.ok ? assocResult.value : ''
@@ -37,5 +36,9 @@ export async function submitControlAction(
     }
   }
 
-  return ok(undefined)
+  return result
+}
+
+export async function submitFeedbackAction(submission: FeedbackSubmission): Promise<Result<void>> {
+  return submitFeedbackUseCase(submission)
 }
