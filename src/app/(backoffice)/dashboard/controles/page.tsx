@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/shared/lib/auth'
-import { listControlsUseCase, getActiveExpiryAlertsUseCase, getAlertThresholdUseCase } from '@/features/controles/domain/use-cases'
+import { listControlsUseCase, getActiveAlertsUseCase, getAlertThresholdUseCase } from '@/features/controles/domain/use-cases'
 import { ControlsListPage } from '@/features/controles/ui/ControlsListPage'
 
 export default async function ControlesPage() {
@@ -11,7 +11,7 @@ export default async function ControlesPage() {
   const alertThresholdDays = await getAlertThresholdUseCase(user.associationId)
   const [controlsResult, alertsResult] = await Promise.all([
     listControlsUseCase(user.associationId),
-    getActiveExpiryAlertsUseCase(user.associationId, alertThresholdDays),
+    getActiveAlertsUseCase(user.associationId, alertThresholdDays),
   ])
 
   if (!controlsResult.ok) {

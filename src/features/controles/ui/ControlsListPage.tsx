@@ -4,7 +4,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { ControlSummary, ExpiryAlertReport, ExpiryAlertItem, AnomalyAlertItem } from '../domain/types'
+import type { ControlSummary, ActiveAlertsReport, ExpiryAlertItem, AnomalyAlertItem } from '../domain/types'
 import { useControlsListPage } from './hooks/useControlsListPage'
 import { useCorrectionModal } from './hooks/useCorrectionModal'
 import { useAnomalyCorrectionModal } from './hooks/useAnomalyCorrectionModal'
@@ -15,7 +15,7 @@ import { formatDate, formatDateTime } from '@/shared/lib/format'
 
 interface ControlsListPageProps {
   controls: ControlSummary[]
-  alerts: ExpiryAlertReport
+  alerts: ActiveAlertsReport
   alertThresholdDays: number
 }
 

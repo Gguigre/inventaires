@@ -19,7 +19,7 @@ export type AnomalyAlertItem = {
   controlId: string
 }
 
-export type ExpiryAlertReport = {
+export type ActiveAlertsReport = {
   anomalies: AnomalyAlertItem[]
   expired: ExpiryAlertItem[]
   atRisk: ExpiryAlertItem[]
@@ -38,7 +38,7 @@ export type ControlSummary = {
   inventoryName: string
   verifierName: string
   submittedAt: Date
-  anomalyCount: number
+  anomalyCount: number  // snapshot historique : anomalies de statut + items périmés lors du contrôle
   atRiskCount: number
 }
 

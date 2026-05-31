@@ -1,7 +1,7 @@
 import { controlesRepository } from '../data/repository'
 import type { Result } from '@/shared/domain/result'
 import { err } from '@/shared/domain/result'
-import type { ControlSummary, ControlDetail, ExpiryAlertReport, CreateCorrectionInput, CreateAnomalyCorrectionInput } from './types'
+import type { ControlSummary, ControlDetail, ActiveAlertsReport, CreateCorrectionInput, CreateAnomalyCorrectionInput } from './types'
 import type { AuthenticatedUser } from '@/shared/lib/auth'
 
 export async function listControlsUseCase(associationId: string): Promise<Result<ControlSummary[]>> {
@@ -14,9 +14,14 @@ export async function getControlDetailUseCase(controlId: string, associationId: 
   return controlesRepository.getControlDetail(controlId, associationId)
 }
 
-export async function getActiveExpiryAlertsUseCase(associationId: string, thresholdDays?: number): Promise<Result<ExpiryAlertReport>> {
+export async function getActiveAlertsUseCase(associationId: string, thresholdDays?: number): Promise<Result<ActiveAlertsReport>> {
   if (!associationId) return err('Association non identifiée.')
-  return controlesRepository.getActiveExpiryAlerts(associationId, thresholdDays)
+  return controlesRepository.getActiveAlerts(associationId, thresholdDays)
+}
+
+export async function getActiveExpiryAlertsUseCase(associationId: string, thresholdDays?: number): Promise<Result<ActiveAlertsReport>> {
+  if (!associationId) return err('Association non identifiée.')
+  return controlesRepository.getActiveAlerts(associationId, thresholdDays, false)
 }
 
 export async function getAlertThresholdUseCase(associationId: string): Promise<number> {
@@ -28,6 +33,8 @@ export async function createAnomalyCorrectionUseCase(
   user: AuthenticatedUser,
 ): Promise<Result<void>> {
   if (input.associationId !== user.associationId) return err('Non autorisé.')
+  const owns = await controlesRepository.verifyInventoryOwnership(input.inventoryId, input.associationId)
+  if (!owns) return err('Non autorisé.')
   return controlesRepository.createAnomalyCorrection(input)
 }
 
