@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCreateCompartmentForm } from './hooks/useCreateCompartmentForm'
 
 interface CreateCompartmentFormProps {
   isSubmitting?: boolean
@@ -13,18 +13,7 @@ export function CreateCompartmentForm({
   onSubmit,
   onCancel,
 }: CreateCompartmentFormProps) {
-  const [name, setName] = useState('')
-  const [nameError, setNameError] = useState(false)
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!name.trim()) {
-      setNameError(true)
-      return
-    }
-    // TODO: brancher sur createCompartmentUseCase
-    onSubmit(name.trim())
-  }
+  const { name, nameError, handleNameChange, handleSubmit } = useCreateCompartmentForm(onSubmit)
 
   return (
     <form
@@ -37,10 +26,7 @@ export function CreateCompartmentForm({
         data-testid="input-new-compartment-name"
         type="text"
         value={name}
-        onChange={(e) => {
-          setName(e.target.value)
-          if (nameError) setNameError(false)
-        }}
+        onChange={(e) => handleNameChange(e.target.value)}
         placeholder="Nom de l'emplacement (ex. : Poche avant, Tiroir 1…)"
         autoFocus
         className={`flex-1 h-9 rounded-lg border-2 px-3 text-sm bg-white

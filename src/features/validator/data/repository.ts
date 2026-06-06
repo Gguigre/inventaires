@@ -1,3 +1,4 @@
+// Dépasse 120 lignes : charge emplacements + matériels en cascade et construit les résultats de contrôle.
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/shared/data/firebase-admin";
 import { chunkArray, FIRESTORE_IN_LIMIT } from "@/shared/lib/array";

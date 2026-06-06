@@ -1,7 +1,7 @@
 import { ok, err } from '@/shared/domain/result'
 import type { Result } from '@/shared/domain/result'
 import { expiryAlertsRepository } from '../data/repository'
-import { getActiveExpiryAlertsUseCase } from '@/features/controles/domain/use-cases'
+import { getActiveExpiryAlertsUseCase } from '@/features/controls/domain/use-cases'
 import { sendExpiryAlertEmail } from './email-service'
 import type { CronReport } from './types'
 

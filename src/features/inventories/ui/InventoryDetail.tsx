@@ -1,3 +1,4 @@
+// Dépasse 120 lignes : orchestre les sections emplacement, matériel et QR code dans une seule vue.
 'use client'
 
 import Link from 'next/link'

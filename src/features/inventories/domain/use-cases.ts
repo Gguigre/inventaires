@@ -1,3 +1,4 @@
+// Dépasse 120 lignes : couvre les use cases inventaire, emplacement et matériel dans une même feature.
 import type { Result } from '@/shared/domain/result'
 import { ok, err } from '@/shared/domain/result'
 import { inventoryRepository } from '../data/repository'

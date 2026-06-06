@@ -1,4 +1,4 @@
-import { controlesRepository } from '../data/repository'
+import { controlsRepository } from '../data/repository'
 import type { Result } from '@/shared/domain/result'
 import { err } from '@/shared/domain/result'
 import type { ControlSummary, ControlDetail, ActiveAlertsReport, CreateCorrectionInput, CreateAnomalyCorrectionInput } from './types'
@@ -6,26 +6,26 @@ import type { AuthenticatedUser } from '@/shared/lib/auth'
 
 export async function listControlsUseCase(associationId: string): Promise<Result<ControlSummary[]>> {
   if (!associationId) return err('Association non identifiée.')
-  return controlesRepository.listControls(associationId)
+  return controlsRepository.listControls(associationId)
 }
 
 export async function getControlDetailUseCase(controlId: string, associationId: string): Promise<Result<ControlDetail>> {
   if (!controlId) return err('Identifiant de contrôle manquant.')
-  return controlesRepository.getControlDetail(controlId, associationId)
+  return controlsRepository.getControlDetail(controlId, associationId)
 }
 
 export async function getActiveAlertsUseCase(associationId: string, thresholdDays?: number): Promise<Result<ActiveAlertsReport>> {
   if (!associationId) return err('Association non identifiée.')
-  return controlesRepository.getActiveAlerts(associationId, thresholdDays)
+  return controlsRepository.getActiveAlerts(associationId, thresholdDays)
 }
 
 export async function getActiveExpiryAlertsUseCase(associationId: string, thresholdDays?: number): Promise<Result<ActiveAlertsReport>> {
   if (!associationId) return err('Association non identifiée.')
-  return controlesRepository.getActiveAlerts(associationId, thresholdDays, false)
+  return controlsRepository.getActiveAlerts(associationId, thresholdDays, false)
 }
 
 export async function getAlertThresholdUseCase(associationId: string): Promise<number> {
-  return controlesRepository.getAlertThreshold(associationId)
+  return controlsRepository.getAlertThreshold(associationId)
 }
 
 export async function createAnomalyCorrectionUseCase(
@@ -33,9 +33,9 @@ export async function createAnomalyCorrectionUseCase(
   user: AuthenticatedUser,
 ): Promise<Result<void>> {
   if (input.associationId !== user.associationId) return err('Non autorisé.')
-  const owns = await controlesRepository.verifyInventoryOwnership(input.inventoryId, input.associationId)
+  const owns = await controlsRepository.verifyInventoryOwnership(input.inventoryId, input.associationId)
   if (!owns) return err('Non autorisé.')
-  return controlesRepository.createAnomalyCorrection(input)
+  return controlsRepository.createAnomalyCorrection(input)
 }
 
 export async function createCorrectionUseCase(
@@ -44,9 +44,9 @@ export async function createCorrectionUseCase(
 ): Promise<Result<void>> {
   if (!input.newExpiryDate) return err('La date est obligatoire.')
   if (input.associationId !== user.associationId) return err('Non autorisé.')
-  const thresholdDays = await controlesRepository.getAlertThreshold(input.associationId)
+  const thresholdDays = await controlsRepository.getAlertThreshold(input.associationId)
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() + thresholdDays)
   if (new Date(input.newExpiryDate) <= cutoff) return err(`Cette date ne résout pas l'alerte (doit être > J+${thresholdDays}).`)
-  return controlesRepository.createCorrection(input)
+  return controlsRepository.createCorrection(input)
 }

@@ -28,7 +28,8 @@
       "Bash(lsof -iTCP -sTCP:LISTEN)",
       "Bash(kill 70941)",
       "Bash(npx slidev *)",
-      "Bash(lsof -iTCP:3030 -sTCP:LISTEN)"
+      "Bash(lsof -iTCP:3030 -sTCP:LISTEN)",
+      "Bash(grep -v \"^$\")"
     ],
     "additionalDirectories": [
       "/Users/guillaumegremillet/src/inventaires/src/app/(backoffice)/dashboard/controles"

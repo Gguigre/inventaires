@@ -42,7 +42,7 @@ async function batchGetNames(collectionName: string, ids: string[]): Promise<Map
   return result
 }
 
-export const controlesRepository = {
+export const controlsRepository = {
   getAlertThreshold,
 
   async listControls(associationId: string): Promise<Result<ControlSummary[]>> {

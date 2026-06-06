@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import { getAuthenticatedUser } from '@/shared/lib/auth'
-import { getControlDetailUseCase } from '@/features/controles/domain/use-cases'
-import { ControlDetailPage } from '@/features/controles/ui/ControlDetailPage'
+import { getControlDetailUseCase } from '@/features/controls/domain/use-cases'
+import { ControlDetailPage } from '@/features/controls/ui/ControlDetailPage'
 
 interface Props {
   params: Promise<{ controleId: string }>

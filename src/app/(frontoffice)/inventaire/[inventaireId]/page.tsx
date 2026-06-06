@@ -1,6 +1,6 @@
-import { loadInventoryUseCase } from '@/features/validateur/domain/use-cases'
-import { ValidatorOrchestrator } from '@/features/validateur/ui/ValidatorOrchestrator'
-import { ErrorScreen } from '@/features/validateur/ui/ErrorScreen'
+import { loadInventoryUseCase } from '@/features/validator/domain/use-cases'
+import { ValidatorOrchestrator } from '@/features/validator/ui/ValidatorOrchestrator'
+import { ErrorScreen } from '@/features/validator/ui/ErrorScreen'
 
 interface Props {
   params: Promise<{ inventaireId: string }>

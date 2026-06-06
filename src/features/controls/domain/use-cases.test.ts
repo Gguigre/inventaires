@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { listControlsUseCase, getControlDetailUseCase, getActiveAlertsUseCase, createCorrectionUseCase, createAnomalyCorrectionUseCase } from './use-cases'
-import { controlesRepository } from '../data/repository'
+import { controlsRepository } from '../data/repository'
 import type { AuthenticatedUser } from '@/shared/lib/auth'
 import type { CreateCorrectionInput, CreateAnomalyCorrectionInput } from './types'
 
 vi.mock('../data/repository', () => ({
-  controlesRepository: {
+  controlsRepository: {
     listControls: vi.fn(),
     getControlDetail: vi.fn(),
     getActiveAlerts: vi.fn(),
@@ -38,17 +38,17 @@ describe('listControlsUseCase', () => {
   it("retourne une erreur si l'associationId est vide", async () => {
     const result = await listControlsUseCase('')
     expect(result.ok).toBe(false)
-    expect(controlesRepository.listControls).not.toHaveBeenCalled()
+    expect(controlsRepository.listControls).not.toHaveBeenCalled()
   })
 
   it("délègue au repository avec l'associationId", async () => {
-    vi.mocked(controlesRepository.listControls).mockResolvedValue({ ok: true, value: [] })
+    vi.mocked(controlsRepository.listControls).mockResolvedValue({ ok: true, value: [] })
     await listControlsUseCase('asso-1')
-    expect(controlesRepository.listControls).toHaveBeenCalledWith('asso-1')
+    expect(controlsRepository.listControls).toHaveBeenCalledWith('asso-1')
   })
 
   it("propage l'erreur du repository", async () => {
-    vi.mocked(controlesRepository.listControls).mockResolvedValue({ ok: false, error: 'Firestore indisponible' })
+    vi.mocked(controlsRepository.listControls).mockResolvedValue({ ok: false, error: 'Firestore indisponible' })
     const result = await listControlsUseCase('asso-1')
     expect(result.ok).toBe(false)
   })
@@ -60,13 +60,13 @@ describe('getControlDetailUseCase', () => {
   it("retourne une erreur si le controlId est vide", async () => {
     const result = await getControlDetailUseCase('', 'asso-1')
     expect(result.ok).toBe(false)
-    expect(controlesRepository.getControlDetail).not.toHaveBeenCalled()
+    expect(controlsRepository.getControlDetail).not.toHaveBeenCalled()
   })
 
   it("délègue au repository avec controlId et associationId", async () => {
-    vi.mocked(controlesRepository.getControlDetail).mockResolvedValue({ ok: false, error: 'introuvable' })
+    vi.mocked(controlsRepository.getControlDetail).mockResolvedValue({ ok: false, error: 'introuvable' })
     await getControlDetailUseCase('ctrl-1', 'asso-1')
-    expect(controlesRepository.getControlDetail).toHaveBeenCalledWith('ctrl-1', 'asso-1')
+    expect(controlsRepository.getControlDetail).toHaveBeenCalledWith('ctrl-1', 'asso-1')
   })
 })
 
@@ -76,50 +76,50 @@ describe('getActiveAlertsUseCase', () => {
   it("retourne une erreur si l'associationId est vide", async () => {
     const result = await getActiveAlertsUseCase('')
     expect(result.ok).toBe(false)
-    expect(controlesRepository.getActiveAlerts).not.toHaveBeenCalled()
+    expect(controlsRepository.getActiveAlerts).not.toHaveBeenCalled()
   })
 })
 
 describe('createCorrectionUseCase', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(controlesRepository.getAlertThreshold).mockResolvedValue(30)
+    vi.mocked(controlsRepository.getAlertThreshold).mockResolvedValue(30)
   })
 
   it("retourne une erreur si la date est vide", async () => {
     const result = await createCorrectionUseCase({ ...mockInput, newExpiryDate: '' }, mockUser)
     expect(result.ok).toBe(false)
-    expect(controlesRepository.createCorrection).not.toHaveBeenCalled()
+    expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
   })
 
   it("retourne une erreur si la date est dans moins de 30 jours", async () => {
     const result = await createCorrectionUseCase({ ...mockInput, newExpiryDate: dateInDays(15) }, mockUser)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error).toContain('J+30')
-    expect(controlesRepository.createCorrection).not.toHaveBeenCalled()
+    expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
   })
 
   it("retourne une erreur si la date est exactement à J+30", async () => {
     const result = await createCorrectionUseCase({ ...mockInput, newExpiryDate: dateInDays(30) }, mockUser)
     expect(result.ok).toBe(false)
-    expect(controlesRepository.createCorrection).not.toHaveBeenCalled()
+    expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
   })
 
   it("retourne une erreur si l'associationId ne correspond pas à l'utilisateur", async () => {
     const result = await createCorrectionUseCase({ ...mockInput, associationId: 'autre-asso' }, mockUser)
     expect(result.ok).toBe(false)
-    expect(controlesRepository.createCorrection).not.toHaveBeenCalled()
+    expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
   })
 
   it("enregistre la correction si la date est > J+30 et l'association est correcte", async () => {
-    vi.mocked(controlesRepository.createCorrection).mockResolvedValue({ ok: true, value: undefined })
+    vi.mocked(controlsRepository.createCorrection).mockResolvedValue({ ok: true, value: undefined })
     const result = await createCorrectionUseCase(mockInput, mockUser)
     expect(result.ok).toBe(true)
-    expect(controlesRepository.createCorrection).toHaveBeenCalledWith(mockInput)
+    expect(controlsRepository.createCorrection).toHaveBeenCalledWith(mockInput)
   })
 
   it("propage l'erreur du repository si la sauvegarde échoue", async () => {
-    vi.mocked(controlesRepository.createCorrection).mockResolvedValue({ ok: false, error: 'Erreur Firestore' })
+    vi.mocked(controlsRepository.createCorrection).mockResolvedValue({ ok: false, error: 'Erreur Firestore' })
     const result = await createCorrectionUseCase(mockInput, mockUser)
     expect(result.ok).toBe(false)
   })
@@ -135,33 +135,33 @@ const mockAnomalyInput: CreateAnomalyCorrectionInput = {
 describe('createAnomalyCorrectionUseCase', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(controlesRepository.verifyInventoryOwnership).mockResolvedValue(true)
-    vi.mocked(controlesRepository.createAnomalyCorrection).mockResolvedValue({ ok: true, value: undefined })
+    vi.mocked(controlsRepository.verifyInventoryOwnership).mockResolvedValue(true)
+    vi.mocked(controlsRepository.createAnomalyCorrection).mockResolvedValue({ ok: true, value: undefined })
   })
 
   it("retourne une erreur si l'associationId ne correspond pas à l'utilisateur", async () => {
     const result = await createAnomalyCorrectionUseCase({ ...mockAnomalyInput, associationId: 'autre-asso' }, mockUser)
     expect(result.ok).toBe(false)
-    expect(controlesRepository.verifyInventoryOwnership).not.toHaveBeenCalled()
-    expect(controlesRepository.createAnomalyCorrection).not.toHaveBeenCalled()
+    expect(controlsRepository.verifyInventoryOwnership).not.toHaveBeenCalled()
+    expect(controlsRepository.createAnomalyCorrection).not.toHaveBeenCalled()
   })
 
   it("retourne une erreur si l'inventaire n'appartient pas à l'association", async () => {
-    vi.mocked(controlesRepository.verifyInventoryOwnership).mockResolvedValue(false)
+    vi.mocked(controlsRepository.verifyInventoryOwnership).mockResolvedValue(false)
     const result = await createAnomalyCorrectionUseCase(mockAnomalyInput, mockUser)
     expect(result.ok).toBe(false)
-    expect(controlesRepository.createAnomalyCorrection).not.toHaveBeenCalled()
+    expect(controlsRepository.createAnomalyCorrection).not.toHaveBeenCalled()
   })
 
   it('enregistre la correction si les vérifications passent', async () => {
     const result = await createAnomalyCorrectionUseCase(mockAnomalyInput, mockUser)
     expect(result.ok).toBe(true)
-    expect(controlesRepository.verifyInventoryOwnership).toHaveBeenCalledWith('inv-1', 'asso-1')
-    expect(controlesRepository.createAnomalyCorrection).toHaveBeenCalledWith(mockAnomalyInput)
+    expect(controlsRepository.verifyInventoryOwnership).toHaveBeenCalledWith('inv-1', 'asso-1')
+    expect(controlsRepository.createAnomalyCorrection).toHaveBeenCalledWith(mockAnomalyInput)
   })
 
   it("propage l'erreur du repository si la sauvegarde échoue", async () => {
-    vi.mocked(controlesRepository.createAnomalyCorrection).mockResolvedValue({ ok: false, error: 'Erreur Firestore' })
+    vi.mocked(controlsRepository.createAnomalyCorrection).mockResolvedValue({ ok: false, error: 'Erreur Firestore' })
     const result = await createAnomalyCorrectionUseCase(mockAnomalyInput, mockUser)
     expect(result.ok).toBe(false)
   })

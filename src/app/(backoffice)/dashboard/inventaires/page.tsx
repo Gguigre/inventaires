@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/shared/lib/auth'
-import { listInventoriesUseCase } from '@/features/gestion-inventaires/domain/use-cases'
-import { InventoryListPage } from '@/features/gestion-inventaires/ui/InventoryListPage'
+import { listInventoriesUseCase } from '@/features/inventories/domain/use-cases'
+import { InventoryListPage } from '@/features/inventories/ui/InventoryListPage'
 
 export default async function InventairesPage() {
   const user = await getAuthenticatedUser()

@@ -1,3 +1,4 @@
+// Dépasse 120 lignes : 4 sections indépendantes (informations, emails, alertes, compte) dans une seule page.
 'use client'
 
 import type { AssociationSettings } from '../domain/types'

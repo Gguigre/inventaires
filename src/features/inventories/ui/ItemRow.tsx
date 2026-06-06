@@ -1,3 +1,4 @@
+// Dépasse 120 lignes : gère l'affichage, l'édition inline et la suppression d'un matériel avec ses états.
 'use client'
 
 import Image from 'next/image'

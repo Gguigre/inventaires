@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/shared/lib/auth'
-import { listControlsUseCase, getActiveAlertsUseCase, getAlertThresholdUseCase } from '@/features/controles/domain/use-cases'
-import { ControlsListPage } from '@/features/controles/ui/ControlsListPage'
+import { listControlsUseCase, getActiveAlertsUseCase, getAlertThresholdUseCase } from '@/features/controls/domain/use-cases'
+import { ControlsListPage } from '@/features/controls/ui/ControlsListPage'
 
 export default async function ControlesPage() {
   const user = await getAuthenticatedUser()

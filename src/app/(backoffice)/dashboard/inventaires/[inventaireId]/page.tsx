@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getAuthenticatedUser } from '@/shared/lib/auth'
-import { getInventoryUseCase } from '@/features/gestion-inventaires/domain/use-cases'
-import { InventoryDetailPage } from '@/features/gestion-inventaires/ui/InventoryDetailPage'
+import { getInventoryUseCase } from '@/features/inventories/domain/use-cases'
+import { InventoryDetailPage } from '@/features/inventories/ui/InventoryDetailPage'
 
 export default async function InventaireDetailPage({
   params,
