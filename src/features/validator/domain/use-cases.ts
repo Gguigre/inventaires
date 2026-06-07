@@ -1,7 +1,8 @@
 import type { Result } from '@/shared/domain/result'
 import { err } from '@/shared/domain/result'
 import { validatorRepository, type LoadInventoryResult } from '../data/repository'
-import type { ControlSubmission, FeedbackSubmission } from './types'
+import type { ControlEmailContext, ControlSubmission, FeedbackSubmission } from './types'
+import { sendControlCompletedEmail } from './email-service'
 
 export async function loadInventoryUseCase(
   inventoryId: string,
@@ -18,9 +19,35 @@ export async function submitFeedbackUseCase(submission: FeedbackSubmission): Pro
 
 export async function submitControlUseCase(
   submission: ControlSubmission,
-  associationId: string,
+  emailContext: ControlEmailContext,
 ): Promise<Result<{ controlId: string }>> {
   if (!submission.verifierName.trim()) return err('Le nom du vérificateur est obligatoire.')
   if (submission.results.length === 0) return err('Le contrôle ne contient aucun résultat.')
-  return validatorRepository.saveControl(submission, associationId)
+
+  const assocResult = await validatorRepository.getInventoryAssociationId(submission.inventoryId)
+  const associationId = assocResult.ok ? assocResult.value : ''
+
+  const result = await validatorRepository.saveControl(submission, associationId)
+  if (!result.ok) return result
+
+  // Non-blocking: email failure does not fail the control
+  if (associationId) {
+    const assocEmailResult = await validatorRepository.getAssociationEmails(associationId)
+    if (assocEmailResult.ok) {
+      await sendControlCompletedEmail(
+        emailContext,
+        submission.verifierName,
+        submission.results.length,
+        assocEmailResult.value.emails,
+        assocEmailResult.value.name,
+        new Date().toLocaleDateString('fr-FR', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        }),
+        assocEmailResult.value.alertThresholdDays,
+      )
+    }
+  }
+
+  return result
 }

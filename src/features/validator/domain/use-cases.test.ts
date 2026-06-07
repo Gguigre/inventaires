@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { loadInventoryUseCase, submitControlUseCase } from './use-cases'
 import { validatorRepository } from '../data/repository'
-import type { ControlSubmission } from './types'
+import type { ControlEmailContext, ControlSubmission } from './types'
 
 vi.mock('../data/repository', () => ({
   validatorRepository: {
@@ -10,6 +10,10 @@ vi.mock('../data/repository', () => ({
     getInventoryAssociationId: vi.fn(),
     getAssociationEmails: vi.fn(),
   },
+}))
+
+vi.mock('./email-service', () => ({
+  sendControlCompletedEmail: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
 }))
 
 const mockInventoryResult = {
@@ -33,6 +37,12 @@ const mockSubmission: ControlSubmission = {
   results: [
     { itemId: 'mat-1', compartmentId: 'emp-1', status: 'present', expiryDate: '2025-12-31' },
   ],
+}
+
+const mockEmailContext: ControlEmailContext = {
+  inventoryName: 'VSL 42',
+  anomalies: [],
+  expiryDates: [],
 }
 
 describe('loadInventoryUseCase', () => {
@@ -72,22 +82,30 @@ describe('submitControlUseCase', () => {
       ok: true,
       value: { controlId: 'ctrl-1' },
     })
+    vi.mocked(validatorRepository.getInventoryAssociationId).mockResolvedValue({
+      ok: true,
+      value: 'asso-1',
+    })
+    vi.mocked(validatorRepository.getAssociationEmails).mockResolvedValue({
+      ok: true,
+      value: { emails: [], name: 'Association Test', alertThresholdDays: 30 },
+    })
   })
 
   it("retourne le controlId après une soumission réussie", async () => {
-    const result = await submitControlUseCase(mockSubmission, 'asso-1')
+    const result = await submitControlUseCase(mockSubmission, mockEmailContext)
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.value.controlId).toBe('ctrl-1')
   })
 
   it("retourne une erreur si le nom du vérificateur est vide", async () => {
-    const result = await submitControlUseCase({ ...mockSubmission, verifierName: '   ' }, 'asso-1')
+    const result = await submitControlUseCase({ ...mockSubmission, verifierName: '   ' }, mockEmailContext)
     expect(result.ok).toBe(false)
     expect(validatorRepository.saveControl).not.toHaveBeenCalled()
   })
 
   it("retourne une erreur si les résultats sont vides", async () => {
-    const result = await submitControlUseCase({ ...mockSubmission, results: [] }, 'asso-1')
+    const result = await submitControlUseCase({ ...mockSubmission, results: [] }, mockEmailContext)
     expect(result.ok).toBe(false)
     expect(validatorRepository.saveControl).not.toHaveBeenCalled()
   })
@@ -97,7 +115,7 @@ describe('submitControlUseCase', () => {
       ok: false,
       error: "Impossible d'enregistrer le contrôle.",
     })
-    const result = await submitControlUseCase(mockSubmission, 'asso-1')
+    const result = await submitControlUseCase(mockSubmission, mockEmailContext)
     expect(result.ok).toBe(false)
   })
 })

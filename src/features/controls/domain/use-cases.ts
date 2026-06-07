@@ -1,4 +1,5 @@
 import { controlsRepository } from '../data/repository'
+import { getActiveAlerts } from '@/shared/data/alerts-repository'
 import type { Result } from '@/shared/domain/result'
 import { err } from '@/shared/domain/result'
 import type { ControlSummary, ControlDetail, ActiveAlertsReport, CreateCorrectionInput, CreateAnomalyCorrectionInput } from './types'
@@ -16,12 +17,7 @@ export async function getControlDetailUseCase(controlId: string, associationId: 
 
 export async function getActiveAlertsUseCase(associationId: string, thresholdDays?: number): Promise<Result<ActiveAlertsReport>> {
   if (!associationId) return err('Association non identifiée.')
-  return controlsRepository.getActiveAlerts(associationId, thresholdDays)
-}
-
-export async function getActiveExpiryAlertsUseCase(associationId: string, thresholdDays?: number): Promise<Result<ActiveAlertsReport>> {
-  if (!associationId) return err('Association non identifiée.')
-  return controlsRepository.getActiveAlerts(associationId, thresholdDays, false)
+  return getActiveAlerts(associationId, thresholdDays)
 }
 
 export async function getAlertThresholdUseCase(associationId: string): Promise<number> {

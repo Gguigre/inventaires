@@ -283,6 +283,7 @@ indique ce cas. Procédure : supprimer l'UID manuellement dans la console Fireba
 
 | Skill | Fichier | Quand le lire |
 |-------|---------|---------------|
+| Architecture | `skills/architecture.md` | Avant tout changement structurel : nouvelle feature, déplacement de logique, question sur « où ça va » |
 | Next.js | `skills/nextjs.md` | Avant tout travail sur les routes, layouts, Server Actions |
 | Firestore | `skills/firestore.md` | Avant tout travail sur la couche data/ |
 | Testing | `skills/testing.md` | Avant d'écrire des tests |

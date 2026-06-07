@@ -1,29 +1,4 @@
-export type ExpiryAlertItem = {
-  itemId: string
-  itemName: string
-  compartmentName: string
-  inventoryId: string
-  inventoryName: string
-  latestExpiryDate: string   // ISO YYYY-MM-DD
-  comment: string | null
-  source: 'control' | 'correction'
-}
-
-export type AnomalyAlertItem = {
-  itemId: string
-  itemName: string
-  compartmentName: string
-  inventoryId: string
-  inventoryName: string
-  comment: string | null
-  controlId: string
-}
-
-export type ActiveAlertsReport = {
-  anomalies: AnomalyAlertItem[]
-  expired: ExpiryAlertItem[]
-  atRisk: ExpiryAlertItem[]
-}
+export type { ExpiryAlertItem, AnomalyAlertItem, ActiveAlertsReport } from '@/shared/domain/alerts'
 
 export type CreateAnomalyCorrectionInput = {
   itemId: string

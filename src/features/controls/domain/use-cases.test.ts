@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { listControlsUseCase, getControlDetailUseCase, getActiveAlertsUseCase, createCorrectionUseCase, createAnomalyCorrectionUseCase } from './use-cases'
 import { controlsRepository } from '../data/repository'
+import { getActiveAlerts } from '@/shared/data/alerts-repository'
 import type { AuthenticatedUser } from '@/shared/lib/auth'
 import type { CreateCorrectionInput, CreateAnomalyCorrectionInput } from './types'
+
+vi.mock('@/shared/data/alerts-repository', () => ({
+  getActiveAlerts: vi.fn(),
+}))
 
 vi.mock('../data/repository', () => ({
   controlsRepository: {
@@ -76,7 +81,7 @@ describe('getActiveAlertsUseCase', () => {
   it("retourne une erreur si l'associationId est vide", async () => {
     const result = await getActiveAlertsUseCase('')
     expect(result.ok).toBe(false)
-    expect(controlsRepository.getActiveAlerts).not.toHaveBeenCalled()
+    expect(getActiveAlerts).not.toHaveBeenCalled()
   })
 })
 
