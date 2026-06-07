@@ -281,15 +281,7 @@ indique ce cas. Procédure : supprimer l'UID manuellement dans la console Fireba
 
 ## Skills disponibles
 
-| Skill | Fichier | Quand le lire |
-|-------|---------|---------------|
-| Architecture | `skills/architecture.md` | Avant tout changement structurel : nouvelle feature, déplacement de logique, question sur « où ça va » |
-| Next.js | `skills/nextjs.md` | Avant tout travail sur les routes, layouts, Server Actions |
-| Firestore | `skills/firestore.md` | Avant tout travail sur la couche data/ |
-| Testing | `skills/testing.md` | Avant d'écrire des tests |
-| Email | `skills/email.md` | Avant de toucher les templates ou l'envoi mail |
-
-**Règle** : lire le ou les skills pertinents avant de commencer chaque agent.
+Les skills vivent dans `skills/` et se déclenchent automatiquement selon leur description frontmatter.
 
 ---
 
