@@ -8,141 +8,108 @@ description: >
   a Server Action vs. an API route. Read this before touching app/ or any actions.ts.
 ---
 
-# Skill — Next.js 15 (App Router)
+# Next.js 15 App Router
 
-## Conventions de routing
+## Route groups
 
-### Route groups
-- `(backoffice)/` — pages authentifiées, layout avec sidebar
-- `(frontoffice)/` — pages publiques, layout mobile-first
+- `(backoffice)/` — authenticated pages, sidebar layout
+- `(frontoffice)/` — public pages, mobile-first full-screen layout
 
-Le middleware Next.js protège `(backoffice)` :
+The middleware protects `(backoffice)`:
+
 ```ts
 // middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-
 export function middleware(request: NextRequest) {
   const session = request.cookies.get('session')
-  if (!session) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
+  if (!session) return NextResponse.redirect(new URL('/login', request.url))
 }
-
-export const config = {
-  matcher: ['/(backoffice)/:path*']
-}
+export const config = { matcher: ['/(backoffice)/:path*'] }
 ```
-
-### Co-localisation
-Chaque route peut co-localiser ses propres composants si elle est la seule
-à les utiliser. Les composants partagés entre routes vont dans `features/[feature]/ui/`.
 
 ---
 
-## Server vs Client components
+## Server vs Client Components
 
-**Par défaut : Server Component.**
-Ajouter `'use client'` uniquement si le composant a besoin de :
-- hooks React (useState, useEffect, useCallback...)
-- event listeners (onClick, onChange...)
+**Default: Server Component.** Add `'use client'` only when the component needs:
+- React hooks (useState, useEffect…)
+- Event listeners (onClick, onChange…)
 - Zustand store
-- accès au browser (window, localStorage...)
+- Browser APIs (window, localStorage…)
 
-**Règle** : les Server Components fetchen les données et les passent en props
-aux Client Components. Ne pas fetcher dans les Client Components sauf
-via Server Actions ou mutation.
+Server Components keep dependencies out of the client bundle and can fetch data directly without an extra network round-trip. Staying server-side until there's a concrete reason to go client avoids both bundle bloat and unnecessary waterfalls.
+
+---
+
+## Data fetching in pages
+
+Call use cases directly in Server Components — no `fetch()` or internal HTTP:
+
+```ts
+// app/(backoffice)/dashboard/controles/page.tsx
+import { listControlsUseCase } from '@/features/controls/domain/use-cases'
+import { getAuthenticatedUser } from '@/shared/lib/auth'
+
+export default async function ControlesPage() {
+  const user = await getAuthenticatedUser()
+  const result = await listControlsUseCase(user.associationId)
+  if (!result.ok) return <ErrorState message={result.error} />
+  return <ControlsList controls={result.value} />
+}
+```
 
 ---
 
 ## Server Actions
 
-Utiliser les Server Actions pour les mutations (create, update, delete).
-Ne pas créer de route API REST pour ça.
+Use Server Actions for all mutations. No REST API routes for simple mutations.
 
 ```ts
-// features/bags/domain/actions.ts
+// features/controls/domain/actions.ts
 'use server'
-
-import { ok } from '@/shared/domain/result'
 import type { Result } from '@/shared/domain/result'
-import { createBagUseCase } from './use-cases'
+import { createCorrectionUseCase } from './use-cases'
+import { getAuthenticatedUser } from '@/shared/lib/auth'
 import { revalidatePath } from 'next/cache'
 
-export async function createBagAction(formData: FormData): Promise<Result<void>> {
-  const name = formData.get('name') as string
-  const result = await createBagUseCase({ name })
-  if (!result.ok) return result
-  revalidatePath('/dashboard/bags')
-  return ok(undefined)
+export async function createCorrectionAction(input: CreateCorrectionInput): Promise<Result<void>> {
+  const user = await getAuthenticatedUser()
+  const result = await createCorrectionUseCase(input, user)
+  if (result.ok) revalidatePath('/dashboard/controles')
+  return result
 }
 ```
 
-Les Server Actions retournent `Result<T>`, jamais de throw.
-Ne jamais retourner `{ error } | { success }` ou exposer des IDs internes.
-
----
-
-## Data fetching
-
-Fetcher dans les Server Components via les use cases directement
-(pas de fetch HTTP interne) :
-
-```ts
-// app/(backoffice)/dashboard/bags/page.tsx
-import { getBagsUseCase } from '@/features/bags/domain/use-cases'
-
-export default async function BagsPage() {
-  const result = await getBagsUseCase()
-  if (!result.ok) return <ErrorState message={result.error} />
-  return <BagsList bags={result.value} />
-}
-```
+Actions always return `Result<T>`. Never throw, never return `{ error } | { success }`, never expose internal IDs or Firebase UIDs.
 
 ---
 
 ## Layouts
 
-- `app/layout.tsx` — layout racine (fonts, providers globaux)
-- `app/(backoffice)/layout.tsx` — sidebar, header, vérification auth
-- `app/(frontoffice)/layout.tsx` — layout mobile plein écran
-
----
-
-## Conventions de nommage fichiers
-
-| Type | Convention | Exemple |
-|------|-----------|---------|
-| Page | `page.tsx` | `app/(backoffice)/dashboard/sacs/page.tsx` |
-| Layout | `layout.tsx` | `app/(backoffice)/layout.tsx` |
-| Server Action | `actions.ts` | `features/sacs/domain/actions.ts` |
-| Use case | `use-cases.ts` | `features/sacs/domain/use-cases.ts` |
-| Repository | `repository.ts` | `features/sacs/data/repository.ts` |
-| Hook | `use-[name].ts` | `features/bags/ui/hooks/useBags.ts` |
-| Composant | PascalCase | `features/bags/ui/BagCard.tsx` |
-
----
-
-## Providers
-
-Wrapper les providers Firebase et Zustand dans un composant client dédié :
-
-```ts
-// shared/ui/Providers.tsx
-'use client'
-
-export function Providers({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
-}
+```
+app/layout.tsx                    → root (fonts, global providers)
+app/(backoffice)/layout.tsx       → sidebar, auth check
+app/(frontoffice)/layout.tsx      → full-screen mobile
 ```
 
-Importer dans `app/layout.tsx` uniquement. Pas de client Firebase dans ce projet — tous les accès Firestore passent par le SDK Admin côté serveur.
+---
+
+## File naming
+
+| Type | Convention | Example |
+|------|-----------|---------|
+| Page | `page.tsx` | `app/(backoffice)/dashboard/controles/page.tsx` |
+| Layout | `layout.tsx` | `app/(backoffice)/layout.tsx` |
+| Server Action | `actions.ts` | `features/controls/domain/actions.ts` |
+| Use case | `use-cases.ts` | `features/controls/domain/use-cases.ts` |
+| Repository | `repository.ts` | `features/controls/data/repository.ts` |
+| Hook | `use-[name].ts` | `features/validator/ui/hooks/useValidator.ts` |
+| Component | PascalCase | `features/controls/ui/ControlCard.tsx` |
 
 ---
 
-## Ce qu'il ne faut pas faire
+## What not to do
 
-- ❌ Fetcher Firestore dans un Client Component (sauf cas justifié avec listener temps réel)
-- ❌ Créer des routes API REST pour des mutations simples → utiliser Server Actions
-- ❌ Importer des modules Node-only dans des Client Components
-- ❌ Mettre de la logique métier dans les pages ou les layouts
+- ❌ Fetch Firestore in a Client Component
+- ❌ Create REST API routes for mutations — use Server Actions
+- ❌ Import Node-only modules in `'use client'` files
+- ❌ Put business logic in pages or layouts

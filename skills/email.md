@@ -7,32 +7,27 @@ description: >
   previewing templates in dev, or checking where email calls belong in the architecture.
 ---
 
-# Skill — Email (Resend + react-email)
+# Email (Resend + react-email)
 
 ## Setup
 
 ```ts
 // shared/lib/resend.ts
 import { Resend } from 'resend'
-
 export const resend = new Resend(process.env.RESEND_API_KEY)
 ```
 
-Variable d'env requise : `RESEND_API_KEY`
-Domaine expéditeur à vérifier dans le dashboard Resend.
+Required: `RESEND_API_KEY` env var, verified sender domain in the Resend dashboard.
 
 ---
 
-## Templates react-email
+## Templates
 
-Les templates vivent dans `emails/`. Ce sont des composants React
-qui génèrent du HTML email-compatible.
+Templates live in `emails/` — React components that produce email-compatible HTML.
 
 ```tsx
 // emails/ControlCompleted.tsx
-import {
-  Html, Head, Body, Container, Heading, Text, Section, Hr
-} from '@react-email/components'
+import { Html, Head, Body, Container, Heading, Text, Section, Hr } from '@react-email/components'
 
 interface Props {
   inventoryName: string
@@ -42,35 +37,23 @@ interface Props {
   anomalies: { itemName: string; comment: string }[]
 }
 
-export function ControlCompletedEmail({
-  inventoryName,
-  verifierName,
-  controlDate,
-  anomalyCount,
-  anomalies,
-}: Props) {
+export function ControlCompletedEmail({ inventoryName, verifierName, controlDate, anomalyCount, anomalies }: Props) {
   return (
     <Html>
       <Head />
       <Body style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f5' }}>
         <Container style={{ maxWidth: '600px', margin: '0 auto', padding: '24px' }}>
           <Heading>Contrôle terminé — {inventoryName}</Heading>
-
           <Text>
-            <strong>{verifierName}</strong> a réalisé un contrôle
-            de <strong>{inventoryName}</strong> le {controlDate}.
+            <strong>{verifierName}</strong> a réalisé un contrôle de{' '}
+            <strong>{inventoryName}</strong> le {controlDate}.
           </Text>
-
           {anomalyCount > 0 ? (
             <Section>
               <Hr />
-              <Heading as="h2">
-                ⚠ {anomalyCount} anomalie{anomalyCount > 1 ? 's' : ''} signalée{anomalyCount > 1 ? 's' : ''}
-              </Heading>
+              <Heading as="h2">⚠ {anomalyCount} anomalie{anomalyCount > 1 ? 's' : ''}</Heading>
               {anomalies.map((a, i) => (
-                <Text key={i}>
-                  <strong>{a.itemName}</strong> — {a.comment}
-                </Text>
+                <Text key={i}><strong>{a.itemName}</strong> — {a.comment}</Text>
               ))}
             </Section>
           ) : (
@@ -85,132 +68,93 @@ export function ControlCompletedEmail({
 
 ---
 
-## Service d'envoi
+## Email service
 
-Encapsuler l'envoi dans un service dans `shared/lib/` ou dans
-le domaine de la feature concernée.
+Encapsulate sending in a service in `domain/email-service.ts` of the feature that owns it. The service returns `void` and swallows errors — email is a non-blocking side effect, not a `Result<T>`.
 
 ```ts
 // features/validator/domain/email-service.ts
 import { resend } from '@/shared/lib/resend'
 import { render } from '@react-email/render'
 import { ControlCompletedEmail } from '@/emails/ControlCompleted'
-import { ok, err } from '@/shared/domain/result'
-import type { Result } from '@/shared/domain/result'
+import { fromAddress } from '@/shared/lib/email-slug'
 
-interface SendControlCompletedParams {
+export async function sendControlCompletedEmail(params: {
   recipients: string[]
   inventoryName: string
   verifierName: string
   controlDate: string
   anomalies: { itemName: string; comment: string }[]
-}
-
-export async function sendControlCompletedEmail(
-  params: SendControlCompletedParams
-): Promise<Result<void>> {
+}): Promise<void> {
+  if (params.recipients.length === 0) return
   try {
-    const html = await render(
-      ControlCompletedEmail({
-        inventoryName: params.inventoryName,
-        verifierName: params.verifierName,
-        controlDate: params.controlDate,
-        anomalyCount: params.anomalies.length,
-        anomalies: params.anomalies,
-      })
-    )
-
+    const html = await render(ControlCompletedEmail({ ...params, anomalyCount: params.anomalies.length }))
     await resend.emails.send({
-      from: 'Secourisme <noreply@votredomaine.fr>',
+      from: fromAddress(params.inventoryName),
       to: params.recipients,
       subject: `Contrôle terminé — ${params.inventoryName}`,
       html,
     })
-
-    return ok(undefined)
-  } catch (error) {
-    return err(`Échec de l'envoi de l'alerte mail : ${(error as Error).message}`)
+  } catch (e) {
+    console.error('[email] sendControlCompletedEmail failed:', e)
   }
 }
 ```
 
 ---
 
-## Où appeler les services mail
+## Where email belongs
 
-**Dans les use cases, via le service d'email. Jamais dans les actions, jamais côté client.**
-
-L'email est un side effect de l'opération principale — il appartient donc au use case.
-L'appel est non-bloquant : une erreur d'envoi ne doit pas faire échouer la soumission.
+Email is called from the **use case**, after the main operation succeeds — never from an action, never from a repository. The use case fires and forgets:
 
 ```ts
-// features/validator/domain/use-cases.ts
-export async function submitControlUseCase(
-  submission: ControlSubmission,
-  emailContext: ControlEmailContext,
-): Promise<Result<{ controlId: string }>> {
-  // ... validation, récupération contexte ...
+const result = await repository.saveControl(submission, associationId)
+if (!result.ok) return result
 
-  const result = await validatorRepository.saveControl(submission, associationId)
-  if (!result.ok) return result
+// Non-blocking: if this throws, the control is still saved
+sendControlCompletedEmail(params).catch((e) =>
+  console.error('[submitControlUseCase] email failure', e)
+)
 
-  // Mail non-bloquant : une erreur ne fait pas échouer la soumission
-  sendControlCompletedEmail({ /* ... */ }).catch((e) =>
-    console.error('[submitControlUseCase] email failure', e)
-  )
-
-  return result
-}
-
-// features/validator/domain/actions.ts — coquille, aucune logique
-'use server'
-export async function submitControlAction(
-  submission: ControlSubmission,
-  emailContext: ControlEmailContext,
-): Promise<Result<{ controlId: string }>> {
-  return submitControlUseCase(submission, emailContext)
-}
+return result
 ```
+
+See the architecture skill for the full rationale on side effects.
 
 ---
 
-## Preview en développement
+## Cron alerts
 
-react-email fournit un serveur de preview :
-
-```bash
-npx email dev --dir emails --port 3001
-```
-
-Permet de visualiser les templates dans le navigateur sans envoyer de vrai mail.
-
----
-
-## Alertes péremption
-
-Même pattern. Créer un template `ExpiryAlertEmail.tsx` et un service dédié.
-L'envoi se fait via un cron job (Vercel Cron ou GitHub Actions) qui appelle
-une API route protégée :
+Scheduled alerts (expiry warnings) follow the same pattern: a cron job hits a protected API route, the route calls a use case, the use case calls the email service.
 
 ```ts
-// app/api/cron/peremptions/route.ts
+// app/api/cron/expiry-alerts/route.ts
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 })
   }
-
-  // vérifier les péremptions, envoyer les alertes
-  // ...
+  const result = await runExpiryAlertsCronUseCase()
+  return Response.json(result)
 }
 ```
 
 ---
 
-## Ce qu'il ne faut pas faire
+## Dev preview
 
-- ❌ Appeler `resend.emails.send` côté client
-- ❌ Mettre la clé API Resend dans une variable `NEXT_PUBLIC_*`
-- ❌ Appeler `resend.emails.send` directement depuis un use case — passer par le service d'email
-- ❌ Déclencher l'envoi depuis une action — l'email appartient au use case
-- ❌ Oublier le `try/catch` — Resend peut échouer, ne pas bloquer le flux principal
+```bash
+npx email dev --dir emails --port 3001
+```
+
+Renders templates in the browser without sending real emails.
+
+---
+
+## What not to do
+
+- ❌ Call `resend.emails.send` directly from a use case — use the email service
+- ❌ Trigger email from a Server Action — it belongs in the use case
+- ❌ Put `RESEND_API_KEY` in a `NEXT_PUBLIC_*` variable
+- ❌ Block the main operation on email — email must be fire-and-forget
+- ❌ Make the email service return `Result<T>` — it returns `void` and logs failures

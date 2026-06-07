@@ -9,31 +9,31 @@ description: >
   When in doubt about "where does this go?" — read this first.
 ---
 
-# Skill — Architecture
+# Architecture
 
-## La règle des dépendances
+## Dependency direction
 
-Les dépendances ne vont que dans un sens, de l'extérieur vers l'intérieur :
+Dependencies flow in one direction — from outside to inside:
 
 ```
-UI (hooks, composants)
-  → Server Action (actions.ts)
+UI (hooks, components)
+  → Server Action (domain/actions.ts)
     → Use Case (domain/use-cases.ts)
       → Repository (data/repository.ts)
         → Firestore (adminDb)
 ```
 
-Chaque couche ne connaît que la couche immédiatement en dessous. Jamais au-dessus.
+Each layer only knows the layer directly below it. The reason this matters: if a repository calls a use case, or a use case imports `adminDb` directly, neither can be tested or replaced in isolation. The rule is what makes each layer independently changeable.
 
 ```ts
-// ✗ — repository qui appelle un use case
+// ✗ — repository that reaches up into a use case
 export const myRepository = {
   async doSomething() {
-    return myUseCase() // remonte dans la couche supérieure
+    return myUseCase()  // wrong direction
   }
 }
 
-// ✓ — repository qui appelle uniquement adminDb
+// ✓ — repository that only talks to Firestore
 export const myRepository = {
   async doSomething() {
     return adminDb.collection('items').get()
@@ -43,36 +43,34 @@ export const myRepository = {
 
 ---
 
-## Isolation des features
+## Feature isolation
 
-**Une feature n'importe jamais depuis une autre feature.**
+A feature never imports from another feature. When two features need the same type or logic, move it to `shared/`.
 
 ```ts
-// ✗ — feature A qui importe un use case de la feature B
+// ✗ — cross-feature imports create hidden coupling
+import type { ExpiryAlertItem } from '@/features/controls/domain/types'
 import { getActiveAlertsUseCase } from '@/features/controls/domain/use-cases'
 
-// ✗ — feature A qui importe un type de la feature B
-import type { ExpiryAlertItem } from '@/features/controls/domain/types'
-
-// ✓ — feature A qui importe depuis shared/
+// ✓ — shared/ is the right place for cross-cutting concerns
 import type { ExpiryAlertItem } from '@/shared/domain/alerts'
+import { getActiveAlerts } from '@/shared/data/alerts-repository'
 ```
 
-Quand deux features ont besoin du même type ou de la même logique, la solution est toujours de déplacer dans `shared/` :
-- Types partagés → `shared/domain/`
-- Requêtes Firestore partagées → `shared/data/`
-- Utilitaires → `shared/lib/`
+Where things go in `shared/`:
+- Shared types → `shared/domain/`
+- Shared Firestore queries → `shared/data/`
+- Utilities (dates, formatting) → `shared/lib/`
 
 ---
 
-## Contrats par couche
+## Layer contracts
 
-### Repository (data/)
+### Repository — reads and writes only
 
-Seule couche qui connaît Firestore. Responsable uniquement de la lecture/écriture brute.
+The repository is the only layer that knows Firestore. It returns raw data and applies no business logic. Business logic that does NOT belong here: date computations, status classification (`expired` / `at-risk` / `ok`), business filtering, calls to external services.
 
 ```ts
-// ✓ — repository léger, sans logique métier
 export const itemRepository = {
   async findByCompartment(compartmentId: string): Promise<Result<Item[]>> {
     try {
@@ -84,164 +82,78 @@ export const itemRepository = {
     } catch (error) {
       return err(`Impossible de charger les matériels : ${(error as Error).message}`)
     }
-  }
+  },
 }
 ```
 
-**Ne jamais mettre dans un repository :**
-- Calculs de dates ou seuils (`startOfToday`, `todayPlusDays`)
-- Classification de statuts (`expired` / `at-risk` / `ok`)
-- Filtrage métier (ex. : "items non corrigés depuis X jours")
-- Appels à des services externes (email, stockage)
+### Use Case — all business logic
 
-Ces logiques appartiennent au use case.
+The use case contains everything that answers "what does this feature actually do?" Standard execution order:
 
-### Use Case (domain/use-cases.ts)
-
-Contient TOUTE la logique métier. Orchestre le repository et les services.
+1. Validate inputs
+2. Check authorization (ownership)
+3. Read context if needed
+4. Main operation
+5. Non-blocking side effects (email, notifications)
 
 ```ts
-// ✓ — use case qui orchestre sans déléguer à l'action
-export async function submitControlUseCase(
-  submission: ControlSubmission,
-): Promise<Result<{ controlId: string }>> {
-  // 1. Validation des inputs
-  if (!submission.verifierName.trim()) return err('Le nom du vérificateur est obligatoire.')
-  if (submission.results.length === 0) return err('Aucun résultat.')
-
-  // 2. Récupération de contexte (repository)
-  const assocResult = await validatorRepository.getInventoryAssociationId(submission.inventoryId)
-  const associationId = assocResult.ok ? assocResult.value : ''
-
-  // 3. Opération principale
-  const result = await validatorRepository.saveControl(submission, associationId)
-  if (!result.ok) return result
-
-  // 4. Side effects non-bloquants (email, logs)
-  if (associationId) {
-    await notifyControlCompleted(associationId, submission)  // non-bloquant
-  }
-
-  return result
+export async function createCorrectionUseCase(
+  input: CreateCorrectionInput,
+  user: AuthenticatedUser,
+): Promise<Result<void>> {
+  if (!input.newExpiryDate) return err('La date est obligatoire.')
+  if (input.associationId !== user.associationId) return err('Non autorisé.')
+  const owns = await repository.verifyOwnership(input.inventoryId, input.associationId)
+  if (!owns.ok) return owns
+  const thresholdDays = await repository.getAlertThreshold(input.associationId)
+  if (new Date(input.newExpiryDate) <= todayPlusDays(thresholdDays))
+    return err(`Doit être > J+${thresholdDays}.`)
+  return repository.createCorrection(input)
 }
 ```
 
-**Ordre dans un use case :**
-1. Validation des inputs
-2. Vérification d'autorisation (ownership)
-3. Lecture de contexte si nécessaire
-4. Opération principale
-5. Side effects non-bloquants (email, revalidation des caches est dans l'action)
+### Server Action — entry point only
 
-### Server Action (domain/actions.ts)
-
-Couche d'entrée : authentification, délégation, revalidation. **Aucune logique.**
+The action authenticates, calls one use case, revalidates. If it does anything else, that logic belongs in the use case.
 
 ```ts
-// ✓ — action sans logique, délègue entièrement
 'use server'
-export async function submitControlAction(
-  submission: ControlSubmission,
-): Promise<Result<{ controlId: string }>> {
-  return submitControlUseCase(submission)
-}
-
-// ✗ — action qui orchestre (appartient au use case)
-export async function submitControlAction(submission: ControlSubmission) {
-  const assocId = await repository.getAssociationId(submission.inventoryId)
-  const result = await submitControlUseCase(submission, assocId)
-  if (!result.ok) return result
-  await repository.sendEmails(assocId)
+export async function createCorrectionAction(input: CreateCorrectionInput): Promise<Result<void>> {
+  const user = await getAuthenticatedUser()
+  const result = await createCorrectionUseCase(input, user)
+  if (result.ok) revalidatePath('/dashboard/controles')
   return result
 }
 ```
 
-**Ce qui est acceptable dans une action :**
-- Lire l'utilisateur authentifié (`await getAuthenticatedUser()`)
-- Appeler un use case
-- `revalidatePath()`
-- Retourner `Result<T>`
-
 ---
 
-## SOLID appliqué à cette stack
+## Email as non-blocking side effect
 
-### S — Single Responsibility
-
-Un use case = une action utilisateur. Un repository = une collection.
+Email is infrastructure. A failed send must never fail the user-facing operation. Call the email service from the use case after the main operation succeeds, fire and forget.
 
 ```ts
-// ✗ — use case qui fait deux choses
-export async function createAndNotifyItemUseCase(data) {
-  const item = await repository.create(data)
-  await sendEmail(...)
-  return item
-}
-
-// ✓ — use case qui crée, et appelle le service de notification en side effect
-export async function createItemUseCase(data) {
-  const result = await repository.create(data)
-  if (result.ok) await notifyItemCreated(result.value).catch(() => {})  // non-bloquant
-  return result
-}
-```
-
-### O — Open/Closed
-
-Étendre les types avec des champs optionnels plutôt que modifier les signatures existantes.
-`Result<T>` ne doit jamais être étendu ni remplacé par un autre pattern.
-
-### I — Interface Segregation
-
-Passer uniquement ce dont la fonction a besoin, pas l'objet entier.
-
-```ts
-// ✗ — use case qui reçoit l'objet entier alors qu'il ne veut que l'ID
-export async function deleteItemUseCase(item: Item): Promise<Result<void>> {
-  return repository.delete(item.id)
-}
-
-// ✓ — use case minimal
-export async function deleteItemUseCase(itemId: string): Promise<Result<void>> {
-  return repository.delete(itemId)
-}
-```
-
-### D — Dependency Inversion
-
-Les use cases dépendent du repository object (abstraction implicite), jamais de `adminDb` directement.
-Les features dépendent de `shared/` pour les concerns croisés, jamais les unes des autres.
-
----
-
-## Email comme side effect non-bloquant
-
-L'envoi d'email est une infrastructure concern. Il ne doit jamais faire échouer l'opération principale.
-
-```ts
-// ✓ — email appelé depuis le use case, après l'opération principale, non-bloquant
 const result = await repository.saveControl(submission, associationId)
 if (!result.ok) return result
 
-// L'envoi peut échouer sans affecter la réponse
-sendCompletedEmail(params).catch((e) =>
+sendControlCompletedEmail(params).catch((e) =>
   console.error('[submitControlUseCase] email failure', e)
 )
 
 return result
 ```
 
-L'email service vit dans `domain/email-service.ts` de la feature qui l'utilise.
-Si plusieurs features utilisent le même template, le service va dans `shared/lib/`.
+The email service lives in `domain/email-service.ts` of the feature that owns it. If multiple features share a template, move the service to `shared/lib/`.
 
 ---
 
-## Anti-patterns fréquents
+## Common violations
 
-| Anti-pattern | Symptôme | Correction |
+| Symptom | Cause | Fix |
 |---|---|---|
-| Action qui orchestre | Action appelle repository directement | Déplacer dans le use case |
-| Import inter-features | `@/features/A/...` importé dans feature B | Déplacer le type/la query dans `shared/` |
-| Logique métier dans repository | `startOfToday()`, filtrage de statut dans `data/` | Déplacer dans le use case |
-| Use case qui saute une couche | Use case importe `adminDb` directement | Passer par le repository |
-| Action qui retourne `{ error } \| { success }` | Pattern non-`Result<T>` | Aligner sur `Result<T>` |
+| Action calls `adminDb` or `repository` directly | Logic in the wrong layer | Move to use case |
+| Feature A imports from `@/features/B/` | Cross-feature coupling | Move type/query to `shared/` |
+| Repository contains `startOfToday()` or status classification | Business logic in data layer | Move to use case |
+| Use case imports `adminDb` directly | Skipped the repository | Add a repository method |
+| Action orchestrates context fetching + email + save | Action doing too much | Move orchestration to use case |
+| Action returns `{ error } \| { success }` | Non-standard result type | Align to `Result<T>` |

@@ -8,107 +8,57 @@ description: >
   mocking Next.js or Firebase modules.
 ---
 
-# Skill — Testing
+# Testing
 
-## Philosophie
+## Why we test
 
-Dans ce projet, les tests ont deux objectifs précis :
+Two objectives, no others:
 
-**1. Protéger contre les régressions.**
-Quand une IA modifie du code, elle peut casser silencieusement un comportement existant sans s'en rendre compte. Les tests détectent ces cassures avant qu'elles n'atteignent la prod.
+1. **Catch regressions.** When code changes, tests surface broken behaviour before it reaches production.
+2. **Verify the spec.** Every explicit business rule in `specs/[feature].md` must have a test. If a rule isn't tested, an AI implementation can quietly ignore it.
 
-**2. Vérifier que l'implémentation respecte la spec.**
-Chaque règle métier de `specs/[feature].md` doit se traduire par au moins un test. Si la règle n'est pas testée, le dev IA peut l'ignorer ou la mal interpréter sans que ça se voie.
-
-**Ce que les tests ne sont PAS dans ce projet :**
-- Un objectif de coverage (pas de seuil à atteindre)
-- Une documentation exhaustive du code
-- Un filet de sécurité pour chaque ligne
-
-**Règle d'or** : un test vaut quelque chose s'il peut échouer. Si un test ne peut jamais rater parce qu'il teste un détail d'implémentation ou un comportement trivial, ne l'écris pas.
+There is no coverage target. A test is worth writing if and only if it can fail.
 
 ---
 
-## Ce qui mérite d'être testé
+## What to test
 
-### Use cases — toujours
+### Use cases — always
 
-Les use cases sont le cœur de la spec. Chaque règle métier explicite dans `specs/[feature].md` doit avoir un test qui l'exprime.
+Every explicit business rule in the spec deserves a test:
 
-Exemples de règles qui méritent un test :
-- "Le commentaire est obligatoire en cas d'Anomalie"
-- "La date de péremption est obligatoire pour les matériels critiques"
-- "Le nom du vérificateur est obligatoire à la soumission"
-- "Un échec d'envoi mail ne bloque pas la confirmation"
-
-Exemples de choses qui ne méritent pas de test :
-- Le happy path trivial sans règle métier
-- Les comportements couverts par TypeScript (types, nullability)
-
-### Composants — seulement les comportements non triviaux
-
-Tester un composant si et seulement si :
-- Il contient une règle métier visible (ex : bloquer un bouton selon une condition)
-- Il a un état conditionnel critique (ex : afficher une erreur, désactiver un champ)
-- Il serait difficile de détecter une régression sans test (ex : la modale reste ouverte si le commentaire est vide)
-
-Ne pas tester :
-- Le rendu de base (texte statique, mise en page)
-- Les styles CSS
-- Les comportements évidents couverts par les types
-
-### E2E — parcours critiques uniquement
-
-Un test E2E si et seulement si le parcours est dans cette liste :
-- Parcours complet du validateur (frontoffice)
-- Signalement d'une anomalie avec commentaire
-- Saisie d'une date de péremption sur matériel critique
-- Login backoffice + mutation critique
-
----
-
-## Trois niveaux, trois outils
-
-| Niveau | Outil | Cible |
-|--------|-------|-------|
-| Unitaire | Vitest | Use cases (règles métier, erreurs) |
-| Composant | Vitest + Testing Library | Comportements UI non triviaux |
-| E2E | Playwright | Parcours critiques complets |
-
----
-
-## Configuration Vitest
-
-```ts
-// vitest.config.ts
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
-import path from 'path'
-
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./src/tests/setup.ts'],
-    exclude: ['**/node_modules/**', 'e2e/**'],
-  },
-  resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
-  },
-})
+```
+"Le commentaire est obligatoire en cas d'Anomalie"
+"La date de péremption est obligatoire pour les matériels critiques"
+"Le nom du vérificateur est obligatoire à la soumission"
+"Un échec d'envoi mail ne bloque pas la confirmation"
 ```
 
-```ts
-// src/tests/setup.ts
-import '@testing-library/jest-dom'
+Not worth testing: the basic happy path with no business rules, behaviours TypeScript already guarantees.
+
+### Components — only non-trivial behaviour
+
+Test a component if it has a rule that TypeScript can't enforce:
+
 ```
+"La popup bloque la fermeture si le commentaire est vide"
+"Le bouton est désactivé tant que le formulaire n'est pas valide"
+```
+
+Not worth testing: static text, CSS, one-liner conditionals.
+
+### E2E — critical journeys only
+
+- Full validator flow (frontoffice)
+- Anomaly reporting with comment
+- Expiry date on critical item
+- Backoffice login + critical mutation
 
 ---
 
-## Tests de use cases
+## Use case tests
 
-Mocker les repositories. Tester les règles métier, pas le code.
+Mock repositories, test business rules — not code.
 
 ```ts
 // features/validator/domain/use-cases.test.ts
@@ -124,33 +74,43 @@ vi.mock('../data/repository', () => ({
   },
 }))
 
-// ✓ Règle spec : "Le nom du vérificateur est obligatoire"
-it("retourne une erreur si le nom du vérificateur est vide", async () => {
-  const result = await submitControlUseCase(
-    { ...mockSubmission, verifierName: '   ' },
-    { inventoryName: 'VSL 42', anomalies: [], expiryDates: [] },
-  )
+vi.mock('./email-service', () => ({ sendControlCompletedEmail: vi.fn() }))
+
+// ✓ Rule: "Le nom du vérificateur est obligatoire"
+it('rejects empty verifier name', async () => {
+  const result = await submitControlUseCase({ ...mockSubmission, verifierName: '   ' }, emailCtx)
   expect(result.ok).toBe(false)
   expect(validatorRepository.saveControl).not.toHaveBeenCalled()
 })
 
-// ✓ Règle spec : "Un échec d'envoi mail ne bloque pas la confirmation"
-it("ne bloque pas la confirmation si l'envoi mail échoue", async () => {
-  vi.mocked(sendControlCompletedEmail).mockResolvedValue({ ok: false, error: 'timeout' })
-  const result = await submitControlUseCase(mockSubmission, emailContext)
+// ✓ Rule: "Un échec mail ne bloque pas la confirmation"
+it('succeeds even when email fails', async () => {
+  vi.mocked(sendControlCompletedEmail).mockRejectedValue(new Error('timeout'))
+  vi.mocked(validatorRepository.saveControl).mockResolvedValue({ ok: true, value: { controlId: 'c-1' } })
+  vi.mocked(validatorRepository.getInventoryAssociationId).mockResolvedValue({ ok: true, value: 'asso-1' })
+  vi.mocked(validatorRepository.getAssociationEmails).mockResolvedValue({
+    ok: true, value: { emails: ['a@b.com'], name: 'A', alertThresholdDays: 30 }
+  })
+  const result = await submitControlUseCase(mockSubmission, emailCtx)
   expect(result.ok).toBe(true)
 })
 ```
 
+If the use case imports from `@/shared/data/`, mock that module too:
+
+```ts
+vi.mock('@/shared/data/alerts-repository', () => ({ getActiveAlerts: vi.fn() }))
+```
+
 ---
 
-## Tests de composants
+## Component tests
 
-Tester le comportement, pas l'implémentation. Utiliser `userEvent` plutôt que `fireEvent`.
+Test behaviour, not implementation. Use `userEvent`, not `fireEvent`.
 
 ```tsx
-// ✓ Règle spec : "La popup bloque la fermeture si le commentaire est vide"
-it("ne ferme pas la modale si le commentaire est vide", async () => {
+// ✓ Rule: "La popup bloque la fermeture si le commentaire est vide"
+it('does not close modal when comment is empty', async () => {
   const user = userEvent.setup()
   const onConfirm = vi.fn()
   render(<AnomalyModal isOpen={true} onConfirm={onConfirm} onCancel={vi.fn()} />)
@@ -162,61 +122,38 @@ it("ne ferme pas la modale si le commentaire est vide", async () => {
 })
 ```
 
-Toujours mocker `next/image` dans les tests de composants :
+Always mock `next/image`:
+
 ```ts
-vi.mock('next/image', () => ({
-  default: ({ alt }: { alt: string }) => <img alt={alt} />,
-}))
+vi.mock('next/image', () => ({ default: ({ alt }: { alt: string }) => <img alt={alt} /> }))
 ```
 
 ---
 
-## Tests E2E (Playwright)
-
-```ts
-// playwright.config.ts
-import { defineConfig, devices } from '@playwright/test'
-
-export default defineConfig({
-  testDir: './e2e',
-  use: { baseURL: 'http://localhost:3000', trace: 'on-first-retry' },
-  projects: [{ name: 'Mobile Chrome', use: { ...devices['Pixel 5'] } }],
-  webServer: {
-    command: 'npm run dev',
-    port: 3000,
-    reuseExistingServer: !process.env.CI,
-  },
-})
-```
-
-Les tests E2E utilisent les données de seed (`npx tsx scripts/seed-dev.ts`).
-Annoter chaque test avec la règle spec qu'il couvre.
-
----
-
-## Organisation des fichiers
+## File structure
 
 ```
-features/
-  validator/
-    domain/
-      use-cases.ts
-      use-cases.test.ts   ← règles métier des use cases
-    ui/
-      AnomalyModal.tsx
-      AnomalyModal.test.tsx  ← comportements non triviaux seulement
+features/validator/
+  domain/
+    use-cases.ts
+    use-cases.test.ts       ← use case rules
+  ui/
+    AnomalyModal.tsx
+    AnomalyModal.test.tsx   ← non-trivial UI behaviour only
 
 e2e/
-  validator.spec.ts      ← parcours critiques
+  validator.spec.ts         ← critical user journeys
 ```
+
+E2E tests use seed data (`npx tsx scripts/seed-dev.ts`). Annotate each test with the spec rule it covers.
 
 ---
 
-## Ce qu'il ne faut PAS faire
+## What not to do
 
-- ❌ Viser un pourcentage de coverage
-- ❌ Tester chaque composant par principe
-- ❌ Écrire un test pour chaque ligne de code
-- ❌ Tester ce que TypeScript garantit déjà
-- ❌ Dupliquer dans les tests ce qui est déjà couvert par les types
-- ❌ Écrire des tests qui ne peuvent pas échouer
+- ❌ Chase a coverage percentage
+- ❌ Test every component by principle
+- ❌ Test what TypeScript already guarantees
+- ❌ Write tests that can never fail
+- ❌ Test implementation details — test observable behaviour
+- ❌ Use `fireEvent` — use `userEvent` which simulates real interactions
