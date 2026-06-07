@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import type { Item } from '../../domain/types'
 
 const SWIPE_THRESHOLD = 60
+const SWIPE_DOWN_THRESHOLD = 80
 const BADGE_THRESHOLD = 20
 const ROTATION_FACTOR = 0.04
 const OPACITY_SCALE = 100
@@ -19,8 +20,10 @@ export function useItemCard(
   const [dateError, setDateError] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [dragX, setDragX] = useState(0)
+  const [dragY, setDragY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
 
   function setExpiryDate(value: string) {
     setExpiryDateRaw(value)
@@ -41,7 +44,6 @@ export function useItemCard(
   }
 
   function handleOpenAnomaly() {
-    if (!validateDate()) return
     setIsModalOpen(true)
   }
 
@@ -50,32 +52,47 @@ export function useItemCard(
     onAnomaly(comment, expiryDate.trim() || undefined)
   }
 
+  function handleMarkAbsent() {
+    onAnomaly('Absent', undefined)
+  }
+
   function handleTouchStart(e: React.TouchEvent) {
     if ((e.target as HTMLElement).closest('input, textarea')) return
     touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
     setIsDragging(true)
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    if (touchStartX.current === null) return
+    if (touchStartX.current === null || touchStartY.current === null) return
     const newDragX = e.touches[0].clientX - touchStartX.current
+    const newDragY = e.touches[0].clientY - touchStartY.current
     setDragX(newDragX)
+    setDragY(newDragY)
     onDragChange?.(newDragX)
   }
 
   function resetDrag() {
     touchStartX.current = null
+    touchStartY.current = null
     setIsDragging(false)
     setDragX(0)
+    setDragY(0)
     onDragChange?.(null)
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null) return
-    const delta = e.changedTouches[0].clientX - touchStartX.current
+    if (touchStartX.current === null || touchStartY.current === null) return
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current
     resetDrag()
-    if (delta > SWIPE_THRESHOLD) handleOpenAnomaly()
-    else if (delta < -SWIPE_THRESHOLD) handleMarkPresent()
+    if (deltaY > SWIPE_DOWN_THRESHOLD && deltaY > Math.abs(deltaX)) {
+      handleMarkAbsent()
+    } else if (deltaX > SWIPE_THRESHOLD) {
+      handleOpenAnomaly()
+    } else if (deltaX < -SWIPE_THRESHOLD) {
+      handleMarkPresent()
+    }
   }
 
   function handleTouchCancel() {
@@ -83,17 +100,19 @@ export function useItemCard(
     resetDrag()
   }
 
-  const glowOpacity = Math.min(Math.abs(dragX) / OPACITY_SCALE, MAX_GLOW_OPACITY)
-  const showAnomalyBadge = dragX > BADGE_THRESHOLD
-  const showOkBadge = dragX < -BADGE_THRESHOLD
-  const cardRotate = dragX * ROTATION_FACTOR
+  const isDownDominant = dragY > Math.abs(dragX)
+  const glowOpacity = isDownDominant ? 0 : Math.min(Math.abs(dragX) / OPACITY_SCALE, MAX_GLOW_OPACITY)
+  const showAbsentBadge = isDownDominant && dragY > BADGE_THRESHOLD
+  const showAnomalyBadge = !isDownDominant && dragX > BADGE_THRESHOLD
+  const showOkBadge = !isDownDominant && dragX < -BADGE_THRESHOLD
+  const cardRotate = isDownDominant ? 0 : dragX * ROTATION_FACTOR
 
   return {
     expiryDate, setExpiryDate,
     dateError,
     isModalOpen, setIsModalOpen,
-    dragX, isDragging,
-    glowOpacity, showAnomalyBadge, showOkBadge, cardRotate,
+    dragX, dragY, isDragging,
+    glowOpacity, showAnomalyBadge, showOkBadge, showAbsentBadge, cardRotate,
     handleMarkPresent,
     handleOpenAnomaly,
     handleConfirmAnomaly,

@@ -5,12 +5,12 @@ import type { CompartmentWithItems, Inventory } from '../domain/types'
 import { useValidatorOrchestrator } from './hooks/useValidatorOrchestrator'
 import { ProgressBar } from './ProgressBar'
 import { ItemCard } from './ItemCard'
+import { CompartmentCard } from './CompartmentCard'
 import { WelcomeScreen } from './WelcomeScreen'
 import { ConfirmationScreen } from './ConfirmationScreen'
 import { RatingScreen } from './RatingScreen'
 import { ErrorScreen } from './ErrorScreen'
 import { SummaryScreen } from './SummaryScreen'
-import { CompartmentHeader } from './CompartmentHeader'
 
 const BG_SCALE = 120
 const MAX_BG_OPACITY = 0.85
@@ -25,7 +25,8 @@ export function ValidatorOrchestrator({ inventory, compartments }: ValidatorOrch
     step, results, isSubmitting, submissionError, submittedAt, controlId,
     nonEmptyCompartments, totalCompartments, totalItems,
     currentCompartment, currentItem,
-    canGoBack, setStep, recordResult, goBack, handleSubmit,
+    canGoBack, setStep, compartmentIndex, recordResult, goBack,
+    enterCompartment, handleSubmit,
   } = useValidatorOrchestrator(inventory, compartments)
 
   const [swipeDragX, setSwipeDragX] = useState<number | null>(null)
@@ -35,9 +36,9 @@ export function ValidatorOrchestrator({ inventory, compartments }: ValidatorOrch
     ? Math.min(Math.abs(swipeDragX) / BG_SCALE, MAX_BG_OPACITY)
     : 0
   const bgColor = swipeDragX !== null && swipeDragX > 0
-    ? `rgba(254, 243, 199, ${bgOpacity})`  // amber-100
+    ? `rgba(254, 243, 199, ${bgOpacity})`
     : swipeDragX !== null && swipeDragX < 0
-    ? `rgba(209, 250, 229, ${bgOpacity})`  // emerald-100
+    ? `rgba(209, 250, 229, ${bgOpacity})`
     : undefined
   const isDragging = swipeDragX !== null
 
@@ -47,8 +48,29 @@ export function ValidatorOrchestrator({ inventory, compartments }: ValidatorOrch
         inventory={inventory}
         compartmentCount={totalCompartments}
         itemCount={totalItems}
-        onStart={() => setStep('item')}
+        onStart={() => setStep('compartment')}
       />
+    )
+  }
+
+  if (step === 'compartment' && currentCompartment) {
+    return (
+      <div className="flex flex-col min-h-dvh bg-slate-50">
+        <ProgressBar
+          currentItem={results.length + 1}
+          totalItems={totalItems}
+          currentCompartment={compartmentIndex + 1}
+          totalCompartments={totalCompartments}
+        />
+        <CompartmentCard
+          name={currentCompartment.name}
+          current={compartmentIndex + 1}
+          total={totalCompartments}
+          canGoBack={canGoBack}
+          onBack={goBack}
+          onEnter={enterCompartment}
+        />
+      </div>
     )
   }
 
@@ -64,11 +86,6 @@ export function ValidatorOrchestrator({ inventory, compartments }: ValidatorOrch
         <ProgressBar
           currentItem={results.length + 1}
           totalItems={totalItems}
-          currentCompartment={nonEmptyCompartments.indexOf(currentCompartment) + 1}
-          totalCompartments={totalCompartments}
-        />
-        <CompartmentHeader
-          name={currentCompartment.name}
           currentCompartment={nonEmptyCompartments.indexOf(currentCompartment) + 1}
           totalCompartments={totalCompartments}
         />

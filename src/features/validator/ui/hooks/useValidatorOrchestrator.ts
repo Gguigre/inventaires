@@ -1,3 +1,4 @@
+// Dépasse 100 lignes : orchestration multi-étapes (compartment + item) avec logique de retour arrière.
 'use client'
 
 import { useEffect } from 'react'
@@ -27,17 +28,22 @@ export function useValidatorOrchestrator(
   const currentCompartment = nonEmptyCompartments[store.compartmentIndex]
   const currentItem = currentCompartment?.items[store.itemIndex]
 
-  const canGoBack = initialized && (store.compartmentIndex > 0 || store.itemIndex > 0)
+  const canGoBack = initialized && (
+    (step === 'compartment' && store.compartmentIndex > 0) ||
+    (step === 'item' && (store.compartmentIndex > 0 || store.itemIndex > 0))
+  )
 
   function goBack() {
-    const prevResults = store.results.slice(0, -1)
-    store.setResults(prevResults)
-    if (store.itemIndex > 0) {
-      store.setItemIndex(store.itemIndex - 1)
-    } else {
+    if (step === 'compartment' || (step === 'item' && store.itemIndex === 0)) {
       const prevCompartment = nonEmptyCompartments[store.compartmentIndex - 1]
+      const prevResults = store.results.filter((r) => r.compartmentId !== prevCompartment.id)
+      store.setResults(prevResults)
       store.setCompartmentIndex(store.compartmentIndex - 1)
-      store.setItemIndex(prevCompartment.items.length - 1)
+      store.setItemIndex(0)
+      store.setStep('compartment')
+    } else {
+      store.setResults(store.results.slice(0, -1))
+      store.setItemIndex(store.itemIndex - 1)
     }
   }
 
@@ -51,6 +57,7 @@ export function useValidatorOrchestrator(
     if (nextCompartment < totalCompartments) {
       store.setCompartmentIndex(nextCompartment)
       store.setItemIndex(0)
+      store.setStep('compartment')
       return
     }
     store.setResults(updatedResults)
@@ -64,6 +71,10 @@ export function useValidatorOrchestrator(
     ]
     store.setResults(updated)
     advance(updated)
+  }
+
+  function enterCompartment() {
+    store.setStep('item')
   }
 
   function buildEmailContext(results: ItemResult[]): ControlEmailContext {
@@ -112,8 +123,10 @@ export function useValidatorOrchestrator(
     currentItem,
     canGoBack,
     setStep: store.setStep,
+    compartmentIndex: store.compartmentIndex,
     recordResult,
     goBack,
+    enterCompartment,
     handleSubmit,
   }
 }

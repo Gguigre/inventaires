@@ -15,16 +15,18 @@ Permettre à un secouriste de contrôler le contenu d'un inventaire (véhicule, 
 
 1. Le secouriste scanne le QR code collé sur l'inventaire → son téléphone ouvre `/inventaire/[inventaireId]`.
 2. L'écran d'accueil affiche le nom de l'inventaire, le nombre d'emplacements et le nombre total de matériels, avec un bouton **Commencer le contrôle**.
-3. Le premier emplacement s'affiche (ex. : "Tiroir 1", "Poche avant"). Pour chaque matériel de cet emplacement (trié par `order`) :
+3. Avant chaque emplacement, une **carte d'emplacement** s'affiche avec le nom du compartiment. Le secouriste swipe dans n'importe quelle direction (ou tape) pour entrer dans l'emplacement.
+4. Pour chaque matériel de l'emplacement (trié par `order`) :
    - La photo du matériel (si renseignée)
    - Son nom
    - Un champ date de péremption **uniquement si `hasExpiry: true`**, clairement labellisé "(facultatif)" ou "(obligatoire)" selon `isCritical`
-4. Le secouriste peut renseigner la date de péremption avant ou après sa décision.
-5. Le secouriste appuie sur **✓ Présent** ou **⚠ Anomalie** (ou swipe droite/gauche).
-6. Si **Anomalie** → une popup s'ouvre, le commentaire est obligatoire avant de continuer.
-7. Si le matériel est `hasExpiry: true` et `isCritical: true` et que la date de péremption n'est pas encore renseignée → le champ est mis en évidence (required) ; impossible de valider sans le remplir.
-8. L'écran avance automatiquement au matériel suivant dans le même emplacement.
-9. Quand tous les matériels d'un emplacement sont traités → l'emplacement suivant s'affiche (trié par `order`).
+5. Le secouriste peut renseigner la date de péremption avant sa décision.
+6. Le secouriste appuie sur **✓ Présent** ou **⚠ Anomalie** (ou swipe gauche/droite), ou swipe **vers le bas** pour signaler que le matériel est **Absent**.
+7. Si **Anomalie** → une popup s'ouvre, le commentaire est obligatoire avant de continuer.
+8. Si **Absent** (swipe bas) → enregistré directement comme anomalie avec commentaire "Absent", sans popup.
+9. Si le matériel est `hasExpiry: true` et `isCritical: true` et que la date n'est pas renseignée → impossible de valider comme **Présent** uniquement. Les décisions Anomalie et Absent ne sont pas bloquées.
+10. L'écran avance automatiquement au matériel suivant dans le même emplacement.
+11. Quand tous les matériels d'un emplacement sont traités → carte d'emplacement du suivant (trié par `order`).
 10. Après le dernier matériel du dernier emplacement → écran récapitulatif groupé par emplacement : statut de chaque matériel, anomalies mises en avant.
 11. Le secouriste saisit son **nom** (champ obligatoire) puis appuie sur **Soumettre le contrôle**.
 12. Écran de confirmation terminal : "Contrôle enregistré. Merci !" avec la date et l'heure.
@@ -39,10 +41,8 @@ Permettre à un secouriste de contrôler le contenu d'un inventaire (véhicule, 
 - Si un emplacement ne contient aucun matériel → il est silencieusement ignoré (non affiché).
 - Si le secouriste ferme l'onglet ou perd la connexion en cours de route → à la réouverture de la même URL, le contrôle repart de zéro. Aucune persistance partielle.
 - Si la soumission échoue (réseau coupé, erreur Firestore) → message d'erreur non bloquant, bouton **Réessayer** visible. Les réponses saisies sont conservées en mémoire (Zustand) pour permettre le retry.
-- Si le matériel est `isCritical` et la date de péremption est vide au moment de la décision → le champ passe en erreur, la décision est bloquée jusqu'à saisie.
-- Si le matériel est `isCritical` et la date est déjà renseignée dans la carte au moment de la décision → aucun blocage supplémentaire.
+- Si le matériel est `isCritical` et la date de péremption est vide au moment de valider **Présent** → le champ passe en erreur, la décision Présent est bloquée jusqu'à saisie. Les décisions Anomalie et Absent ne sont pas bloquées.
 - Si le commentaire d'anomalie est vide → impossible de fermer la popup, message de validation affiché.
-- Si un matériel `isCritical` est marqué Anomalie → le champ date de péremption ET le commentaire sont tous deux obligatoires.
 - Si le champ nom du vérificateur est vide à la soumission → impossible de soumettre, message de validation affiché.
 - Après soumission réussie → la page de confirmation est terminale : pas de possibilité de modifier ou de resoumettre depuis cette session.
 
@@ -51,11 +51,12 @@ Permettre à un secouriste de contrôler le contenu d'un inventaire (véhicule, 
 ## Règles métier
 
 - L'accès au frontoffice est entièrement **public** : aucune authentification requise.
-- Chaque matériel reçoit exactement **une** décision (Présent ou Anomalie) avant de passer au suivant. Pas de saut, pas de retour en arrière.
+- Chaque matériel reçoit exactement **une** décision (Présent, Anomalie, ou Absent) avant de passer au suivant. Pas de saut possible.
+- **Absent** (swipe bas) : raccourci pour enregistrer une anomalie avec commentaire "Absent" sans ouvrir de popup. Réservé au cas où le matériel est complètement manquant (pas une anomalie partielle).
 - Un commentaire est **obligatoire** en cas d'Anomalie.
 - Le champ date de péremption est affiché **uniquement pour les matériels `hasExpiry: true`** (matériels périssables). Les matériels non périssables (lampe torche, ciseaux…) n'ont pas de champ date.
 - La date de péremption est **facultative** pour les matériels `hasExpiry: true, isCritical: false`.
-- La date de péremption est **obligatoire** pour tout matériel `hasExpiry: true, isCritical: true`, quelle que soit la décision. Elle peut être saisie à tout moment sur la carte avant la décision ; si elle l'est, la décision n'est pas bloquée.
+- La date de péremption est **obligatoire** pour tout matériel `hasExpiry: true, isCritical: true` **marqué Présent**. Elle n'est pas requise pour les décisions Anomalie ou Absent (matériel non accessible ou manquant).
 - La mention "(facultatif)" ou "(obligatoire)" est affichée à côté du label date selon `isCritical`.
 - Le format de date attendu est **JJ/MM/AAAA** (ou via date picker natif du navigateur).
 - Le nom du vérificateur est **obligatoire** à la soumission.
@@ -70,8 +71,9 @@ Permettre à un secouriste de contrôler le contenu d'un inventaire (véhicule, 
 ## Composants UI à créer
 
 - `EcranAccueil` — nom de l'inventaire, nombre d'emplacements et de matériels, bouton de démarrage
+- `CarteEmplacement` — affiche le nom de l'emplacement avant d'y entrer ; swipe ou tap dans n'importe quelle direction pour continuer ; bouton Précédent si applicable
 - `EnTeteEmplacement` — affiche le nom de l'emplacement courant et la progression globale
-- `CarteMateriel` — affiche photo, nom, champ date de péremption (toujours visible) et boutons de décision ; gère le swipe gauche/droite
+- `CarteMateriel` — affiche photo, nom, champ date de péremption (toujours visible) et boutons de décision ; gère le swipe gauche (Présent), droite (Anomalie), bas (Absent)
 - `BoutonsDecision` — deux boutons larges (Présent / Anomalie)
 - `ModalAnomalie` — popup avec textarea de commentaire ; bloque la fermeture si vide
 - `BarreProgression` — indicateur "matériel X sur N (emplacement Y sur Z)"

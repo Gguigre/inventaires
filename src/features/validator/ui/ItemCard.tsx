@@ -17,7 +17,8 @@ export function ItemCard({ item, onPresent, onAnomaly, onDragChange }: ItemCardP
   const {
     expiryDate, setExpiryDate, dateError,
     isModalOpen, setIsModalOpen,
-    dragX, isDragging, glowOpacity, showAnomalyBadge, showOkBadge, cardRotate,
+    dragX, dragY, isDragging,
+    glowOpacity, showAnomalyBadge, showOkBadge, showAbsentBadge, cardRotate,
     handleMarkPresent, handleOpenAnomaly, handleConfirmAnomaly,
     handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel,
   } = useItemCard(item, onPresent, onAnomaly, onDragChange)
@@ -37,12 +38,12 @@ export function ItemCard({ item, onPresent, onAnomaly, onDragChange }: ItemCardP
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchCancel}
         style={{
-          transform: `translateX(${dragX}px) rotate(${cardRotate}deg)`,
+          transform: `translateX(${dragX}px) translateY(${Math.max(0, dragY)}px) rotate(${cardRotate}deg)`,
           transition: (isDragging || isModalOpen) ? 'none' : 'transform 0.3s ease-out, box-shadow 0.3s ease-out',
           willChange: isDragging ? 'transform' : undefined,
           boxShadow,
         }}
-        className="flex flex-col flex-1 relative rounded-2xl overflow-hidden bg-white touch-pan-y"
+        className="flex flex-col flex-1 relative rounded-2xl overflow-hidden bg-white touch-none"
       >
         {showAnomalyBadge && (
           <div className="absolute top-6 left-5 z-20 border-4 border-amber-500 text-amber-500 bg-white/90 rounded-xl px-3 py-1.5 font-bold text-lg -rotate-12">
@@ -52,6 +53,11 @@ export function ItemCard({ item, onPresent, onAnomaly, onDragChange }: ItemCardP
         {showOkBadge && (
           <div className="absolute top-6 right-5 z-20 border-4 border-emerald-600 text-emerald-600 bg-white/90 rounded-xl px-3 py-1.5 font-bold text-lg rotate-12">
             ✓ OK
+          </div>
+        )}
+        {showAbsentBadge && (
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 border-4 border-slate-500 text-slate-500 bg-white/90 rounded-xl px-3 py-1.5 font-bold text-lg">
+            ✕ ABSENT
           </div>
         )}
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ItemResult } from '../../domain/types'
 
-export type ValidatorStep = 'welcome' | 'item' | 'summary' | 'rating' | 'confirmation'
+export type ValidatorStep = 'welcome' | 'compartment' | 'item' | 'summary' | 'rating' | 'confirmation'
 
 interface ValidatorStore {
   inventoryId: string
