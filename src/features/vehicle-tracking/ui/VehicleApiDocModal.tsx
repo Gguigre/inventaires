@@ -24,6 +24,8 @@ export function VehicleApiDocModal({ isOpen, onClose }: VehicleApiDocModalProps)
 
         <p className="text-sm text-slate-500 mb-4">
           À chaque mise à jour d&apos;état, la carte envoie une requête authentifiée par sa clé API.
+          La position (<code>lat</code>/<code>lng</code>) est facultative, mais doit être fournie en entier
+          ou omise en entier — pas l&apos;une sans l&apos;autre.
         </p>
 
         <div className="mb-4">

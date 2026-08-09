@@ -8,8 +8,8 @@ import { POSITION_RETENTION_DAYS, MS_PER_DAY } from '../domain/constants'
 
 export interface VehicleStatusRecord {
   associationId: string
-  lat: number
-  lng: number
+  lat?: number
+  lng?: number
   isCircuitCut: boolean
   stableSince: Date
   lastSeenAt: Date
@@ -26,8 +26,8 @@ export interface VehiclePositionRecord {
 function toStatusRecord(data: FirebaseFirestore.DocumentData): VehicleStatusRecord {
   return {
     associationId: data.associationId as string,
-    lat: data.lat as number,
-    lng: data.lng as number,
+    lat: data.lat as number | undefined,
+    lng: data.lng as number | undefined,
     isCircuitCut: data.isCircuitCut as boolean,
     stableSince: (data.stableSince as Timestamp).toDate(),
     lastSeenAt: (data.lastSeenAt as Timestamp).toDate(),
@@ -59,35 +59,39 @@ export async function touchLastSeen(inventoryId: string, timestamp: Date): Promi
 export async function recordVehiclePoint(input: {
   inventoryId: string
   associationId: string
-  lat: number
-  lng: number
+  position: { lat: number; lng: number } | null
   isCircuitCut: boolean
   timestamp: Date
 }): Promise<Result<void>> {
   try {
     const timestamp = Timestamp.fromDate(input.timestamp)
-    const expiresAt = Timestamp.fromDate(
-      new Date(input.timestamp.getTime() + POSITION_RETENTION_DAYS * MS_PER_DAY),
+
+    await adminDb.collection('vehicleStatuses').doc(input.inventoryId).set(
+      {
+        associationId: input.associationId,
+        ...(input.position ? { lat: input.position.lat, lng: input.position.lng } : {}),
+        isCircuitCut: input.isCircuitCut,
+        stableSince: timestamp,
+        lastSeenAt: timestamp,
+        poweredAlertSent: false,
+      },
+      { merge: true },
     )
 
-    await adminDb.collection('vehicleStatuses').doc(input.inventoryId).set({
-      associationId: input.associationId,
-      lat: input.lat,
-      lng: input.lng,
-      isCircuitCut: input.isCircuitCut,
-      stableSince: timestamp,
-      lastSeenAt: timestamp,
-      poweredAlertSent: false,
-    })
-    await adminDb.collection('vehiclePositions').add({
-      associationId: input.associationId,
-      inventoryId: input.inventoryId,
-      lat: input.lat,
-      lng: input.lng,
-      isCircuitCut: input.isCircuitCut,
-      timestamp,
-      expiresAt,
-    })
+    if (input.position) {
+      const expiresAt = Timestamp.fromDate(
+        new Date(input.timestamp.getTime() + POSITION_RETENTION_DAYS * MS_PER_DAY),
+      )
+      await adminDb.collection('vehiclePositions').add({
+        associationId: input.associationId,
+        inventoryId: input.inventoryId,
+        lat: input.position.lat,
+        lng: input.position.lng,
+        isCircuitCut: input.isCircuitCut,
+        timestamp,
+        expiresAt,
+      })
+    }
     return ok(undefined)
   } catch (error) {
     return err(`Impossible d'enregistrer la position. Erreur: ${(error as Error).message}`)

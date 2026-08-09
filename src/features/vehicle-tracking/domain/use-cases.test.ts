@@ -199,6 +199,36 @@ describe('receiveVehicleStatusUseCase', () => {
     expect(result).toEqual(err('Longitude invalide.'))
   })
 
+  it('rejette une latitude fournie sans longitude', async () => {
+    const result = await receiveVehicleStatusUseCase({ ...baseInput, lng: undefined })
+    expect(result).toEqual(err('La position doit inclure latitude et longitude, ou aucune des deux.'))
+    expect(vehicleTrackingRepository.findDeviceByKeyHash).not.toHaveBeenCalled()
+  })
+
+  it('rejette une longitude fournie sans latitude', async () => {
+    const result = await receiveVehicleStatusUseCase({ ...baseInput, lat: undefined })
+    expect(result).toEqual(err('La position doit inclure latitude et longitude, ou aucune des deux.'))
+    expect(vehicleTrackingRepository.findDeviceByKeyHash).not.toHaveBeenCalled()
+  })
+
+  it('accepte un ping sans position pour un premier ping', async () => {
+    vi.mocked(vehicleTrackingRepository.findDeviceByKeyHash).mockResolvedValue(ok({ inventoryId: INV_ID, associationId: ASSOC_ID }))
+    vi.mocked(inventoryRepository.checkInventoryOwnership).mockResolvedValue(ok(undefined))
+    vi.mocked(vehicleTrackingRepository.getVehicleStatus).mockResolvedValue(ok(null))
+    vi.mocked(vehicleTrackingRepository.recordVehiclePoint).mockResolvedValue(ok(undefined))
+
+    const result = await receiveVehicleStatusUseCase({ ...baseInput, lat: undefined, lng: undefined })
+
+    expect(result).toEqual(ok(undefined))
+    expect(vehicleTrackingRepository.recordVehiclePoint).toHaveBeenCalledWith({
+      inventoryId: INV_ID,
+      associationId: ASSOC_ID,
+      position: null,
+      isCircuitCut: baseInput.isCircuitCut,
+      timestamp: baseInput.timestamp,
+    })
+  })
+
   it('rejette un horodatage invalide', async () => {
     const result = await receiveVehicleStatusUseCase({ ...baseInput, timestamp: new Date('n’importe quoi') })
     expect(result).toEqual(err('Horodatage invalide.'))
@@ -235,8 +265,7 @@ describe('receiveVehicleStatusUseCase', () => {
     expect(vehicleTrackingRepository.recordVehiclePoint).toHaveBeenCalledWith({
       inventoryId: INV_ID,
       associationId: ASSOC_ID,
-      lat: baseInput.lat,
-      lng: baseInput.lng,
+      position: { lat: baseInput.lat, lng: baseInput.lng },
       isCircuitCut: baseInput.isCircuitCut,
       timestamp: baseInput.timestamp,
     })
@@ -352,6 +381,46 @@ describe('receiveVehicleStatusUseCase', () => {
     expect(result).toEqual(ok(undefined))
     expect(vehicleTrackingRepository.recordVehiclePoint).toHaveBeenCalled()
     expect(sendPoweredAlertIfDue).not.toHaveBeenCalled()
+  })
+
+  it('ignore un ping sans position si l’état du coupe-circuit n’a pas changé', async () => {
+    const stableSince = new Date('2026-01-01T09:00:00Z')
+    const lastSeenAt = new Date(baseInput.timestamp.getTime() - (MIN_PING_INTERVAL_SECONDS + 1) * MS_PER_SECOND)
+    vi.mocked(vehicleTrackingRepository.findDeviceByKeyHash).mockResolvedValue(ok({ inventoryId: INV_ID, associationId: ASSOC_ID }))
+    vi.mocked(inventoryRepository.checkInventoryOwnership).mockResolvedValue(ok(undefined))
+    vi.mocked(vehicleTrackingRepository.getVehicleStatus).mockResolvedValue(ok({
+      associationId: ASSOC_ID, isCircuitCut: false,
+      stableSince, lastSeenAt, poweredAlertSent: false,
+    }))
+    vi.mocked(vehicleTrackingRepository.touchLastSeen).mockResolvedValue(ok(undefined))
+
+    const result = await receiveVehicleStatusUseCase({ ...baseInput, lat: undefined, lng: undefined })
+
+    expect(result).toEqual(ok(undefined))
+    expect(vehicleTrackingRepository.touchLastSeen).toHaveBeenCalledWith(INV_ID, baseInput.timestamp)
+    expect(vehicleTrackingRepository.recordVehiclePoint).not.toHaveBeenCalled()
+  })
+
+  it('enregistre un point sans position si seul l’état du coupe-circuit a changé', async () => {
+    const lastSeenAt = new Date(baseInput.timestamp.getTime() - (MIN_PING_INTERVAL_SECONDS + 1) * MS_PER_SECOND)
+    vi.mocked(vehicleTrackingRepository.findDeviceByKeyHash).mockResolvedValue(ok({ inventoryId: INV_ID, associationId: ASSOC_ID }))
+    vi.mocked(inventoryRepository.checkInventoryOwnership).mockResolvedValue(ok(undefined))
+    vi.mocked(vehicleTrackingRepository.getVehicleStatus).mockResolvedValue(ok({
+      associationId: ASSOC_ID, isCircuitCut: true,
+      stableSince: lastSeenAt, lastSeenAt, poweredAlertSent: false,
+    }))
+    vi.mocked(vehicleTrackingRepository.recordVehiclePoint).mockResolvedValue(ok(undefined))
+
+    const result = await receiveVehicleStatusUseCase({ ...baseInput, lat: undefined, lng: undefined })
+
+    expect(result).toEqual(ok(undefined))
+    expect(vehicleTrackingRepository.recordVehiclePoint).toHaveBeenCalledWith({
+      inventoryId: INV_ID,
+      associationId: ASSOC_ID,
+      position: null,
+      isCircuitCut: baseInput.isCircuitCut,
+      timestamp: baseInput.timestamp,
+    })
   })
 })
 
