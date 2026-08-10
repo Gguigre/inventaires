@@ -1,9 +1,9 @@
 // Dépasse 120 lignes : agrège contrôles, corrections et anomalies depuis plusieurs collections Firestore.
-import { FieldPath } from "firebase-admin/firestore";
+import { FieldPath, Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/shared/data/firebase-admin";
 import { chunkArray, FIRESTORE_IN_LIMIT } from "@/shared/lib/array";
 import { DEFAULT_ALERT_THRESHOLD_DAYS } from "@/shared/lib/alert-defaults";
-import { startOfToday, todayPlusDays } from "@/shared/lib/dates";
+import { startOfToday, todayPlusDays, todayMinusDays } from "@/shared/lib/dates";
 import type { Result } from "@/shared/domain/result";
 import { ok, err } from "@/shared/domain/result";
 import type {
@@ -11,6 +11,8 @@ import type {
   AnomalyAlertItem,
   ActiveAlertsReport,
 } from "@/shared/domain/alerts";
+
+const CONTROLS_HISTORY_WINDOW_DAYS = 365;
 
 async function fetchAlertThreshold(associationId: string): Promise<number> {
   try {
@@ -100,9 +102,15 @@ export async function getActiveAlerts(
       source: "control" | "correction";
     };
     const entries = new Map<string, Entry>();
+    const since = Timestamp.fromDate(todayMinusDays(CONTROLS_HISTORY_WINDOW_DAYS));
     const controlSnaps = await Promise.all(
       chunkArray(inventoryIds, FIRESTORE_IN_LIMIT).map((chunk) =>
-        adminDb.collection("controles").where("inventoryId", "in", chunk).get(),
+        adminDb
+          .collection("controles")
+          .where("inventoryId", "in", chunk)
+          .where("submittedAt", ">=", since)
+          .orderBy("submittedAt", "desc")
+          .get(),
       ),
     );
     const allControlDocs: FirebaseFirestore.QueryDocumentSnapshot[] = controlSnaps.flatMap(
