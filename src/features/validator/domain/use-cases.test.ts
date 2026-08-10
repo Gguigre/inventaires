@@ -31,6 +31,7 @@ const mockInventoryResult = {
         items: [{ id: 'mat-1', name: 'Défibrillateur', photoUrl: '', hasExpiry: true, isCritical: true, order: 1 }],
       },
     ],
+    lastExpiryDates: {},
   },
 }
 
