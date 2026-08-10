@@ -2,6 +2,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb, adminAuth } from '@/shared/data/firebase-admin'
 import { ok, err } from '@/shared/domain/result'
 import type { Result } from '@/shared/domain/result'
+import { chunkArray, FIREBASE_AUTH_GET_USERS_LIMIT } from '@/shared/lib/array'
 import type { AdminAccount, AssociationSummary } from '../domain/types'
 
 export const teamRepository = {
@@ -9,12 +10,15 @@ export const teamRepository = {
     try {
       const snap = await adminDb.collection('users').where('associationIds', 'array-contains', associationId).where('role', '==', 'admin').get()
       if (snap.empty) return ok([])
-      const { users } = await adminAuth.getUsers(snap.docs.map((d) => ({ uid: d.id })))
-      const accounts = users.map((u) => ({
-        uid: u.uid,
-        email: u.email ?? '',
-        createdAt: u.metadata.creationTime ? new Date(u.metadata.creationTime) : null,
-      }))
+      const accounts: AdminAccount[] = []
+      for (const chunk of chunkArray(snap.docs, FIREBASE_AUTH_GET_USERS_LIMIT)) {
+        const { users } = await adminAuth.getUsers(chunk.map((d) => ({ uid: d.id })))
+        accounts.push(...users.map((u) => ({
+          uid: u.uid,
+          email: u.email ?? '',
+          createdAt: u.metadata.creationTime ? new Date(u.metadata.creationTime) : null,
+        })))
+      }
       accounts.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0))
       return ok(accounts)
     } catch (error) {

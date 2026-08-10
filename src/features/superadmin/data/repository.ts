@@ -1,6 +1,6 @@
 import { FieldPath } from 'firebase-admin/firestore'
 import { adminDb, adminAuth } from '@/shared/data/firebase-admin'
-import { chunkArray, FIRESTORE_IN_LIMIT } from '@/shared/lib/array'
+import { chunkArray, FIRESTORE_IN_LIMIT, FIREBASE_AUTH_GET_USERS_LIMIT } from '@/shared/lib/array'
 import { ok, err } from '@/shared/domain/result'
 import type { Result } from '@/shared/domain/result'
 import type { AssociationSummary, CreateAssociationInput, FeedbackRow } from '../domain/types'
@@ -21,8 +21,8 @@ export const superadminRepository = {
       }
       const uids = [...adminUidByAssoc.values()]
       const emailByUid = new Map<string, string>()
-      if (uids.length > 0) {
-        const { users } = await adminAuth.getUsers(uids.map(uid => ({ uid })))
+      for (const chunk of chunkArray(uids, FIREBASE_AUTH_GET_USERS_LIMIT)) {
+        const { users } = await adminAuth.getUsers(chunk.map(uid => ({ uid })))
         for (const u of users) emailByUid.set(u.uid, u.email ?? '')
       }
       return ok(assocSnap.docs.map(doc => ({
