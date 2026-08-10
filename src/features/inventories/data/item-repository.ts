@@ -33,9 +33,13 @@ export async function createItem(
   data: { name: string; photoUrl: string; hasExpiry: boolean; isCritical: boolean },
 ): Promise<Result<Item>> {
   try {
-    const existing = await adminDb.collection('materiels').where('compartmentId', '==', compartmentId).count().get()
-    const order = existing.data().count + 1
-    const ref = await adminDb.collection('materiels').add({ compartmentId, ...data, order })
+    const ref = adminDb.collection('materiels').doc()
+    const order = await adminDb.runTransaction(async (t) => {
+      const existing = await t.get(adminDb.collection('materiels').where('compartmentId', '==', compartmentId).count())
+      const order = existing.data().count + 1
+      t.set(ref, { compartmentId, ...data, order })
+      return order
+    })
     return ok({ id: ref.id, name: data.name, photoUrl: data.photoUrl, hasExpiry: data.hasExpiry, isCritical: data.isCritical, order, compartmentId })
   } catch (error) {
     return err(`Impossible de créer le matériel. Erreur: ${(error as Error).message}`)

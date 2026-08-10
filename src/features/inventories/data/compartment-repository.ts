@@ -28,9 +28,13 @@ export async function checkCompartmentIdsOwnership(inventoryId: string, compartm
 
 export async function createCompartment(inventoryId: string, name: string): Promise<Result<Compartment>> {
   try {
-    const existing = await adminDb.collection('emplacements').where('inventoryId', '==', inventoryId).count().get()
-    const order = existing.data().count + 1
-    const ref = await adminDb.collection('emplacements').add({ inventoryId, name, order })
+    const ref = adminDb.collection('emplacements').doc()
+    const order = await adminDb.runTransaction(async (t) => {
+      const existing = await t.get(adminDb.collection('emplacements').where('inventoryId', '==', inventoryId).count())
+      const order = existing.data().count + 1
+      t.set(ref, { inventoryId, name, order })
+      return order
+    })
     return ok({ id: ref.id, name, order, inventoryId })
   } catch (error) {
     return err(`Impossible de créer l'emplacement. Erreur: ${(error as Error).message}`)
