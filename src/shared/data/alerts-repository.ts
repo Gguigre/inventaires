@@ -190,6 +190,13 @@ export async function getActiveAlerts(
     const atRisk: Entry[] = [];
     for (const entry of entries.values()) {
       const d = new Date(entry.latestExpiryDate);
+      if (Number.isNaN(d.getTime())) {
+        console.error(
+          `[getActiveAlerts] date de péremption invalide pour l'item ${entry.itemId}: "${entry.latestExpiryDate}"`,
+        );
+        expired.push(entry);
+        continue;
+      }
       if (d <= now) expired.push(entry);
       else if (d <= risk) atRisk.push(entry);
     }
