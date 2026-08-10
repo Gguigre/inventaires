@@ -1,4 +1,5 @@
 import { controlsRepository } from '../data/repository'
+import { inventoryRepository } from '@/features/inventories/data/repository'
 import { getActiveAlerts } from '@/shared/data/alerts-repository'
 import type { Result } from '@/shared/domain/result'
 import { err } from '@/shared/domain/result'
@@ -35,8 +36,8 @@ export async function createAnomalyCorrectionUseCase(
   user: AuthenticatedUser,
 ): Promise<Result<void>> {
   if (input.associationId !== user.associationId) return err('Non autorisé.')
-  const owns = await controlsRepository.verifyInventoryOwnership(input.inventoryId, input.associationId)
-  if (!owns) return err('Non autorisé.')
+  const ownership = await inventoryRepository.checkInventoryOwnership(input.inventoryId, input.associationId)
+  if (!ownership.ok) return err('Non autorisé.')
   return controlsRepository.createAnomalyCorrection(input)
 }
 
@@ -46,8 +47,8 @@ export async function createCorrectionUseCase(
 ): Promise<Result<void>> {
   if (!input.newExpiryDate) return err('La date est obligatoire.')
   if (input.associationId !== user.associationId) return err('Non autorisé.')
-  const owns = await controlsRepository.verifyInventoryOwnership(input.inventoryId, input.associationId)
-  if (!owns) return err('Non autorisé.')
+  const ownership = await inventoryRepository.checkInventoryOwnership(input.inventoryId, input.associationId)
+  if (!ownership.ok) return err('Non autorisé.')
   const thresholdDays = await controlsRepository.getAlertThreshold(input.associationId)
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() + thresholdDays)

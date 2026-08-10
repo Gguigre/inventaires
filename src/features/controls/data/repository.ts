@@ -149,15 +149,6 @@ export const controlsRepository = {
     }
   },
 
-  async verifyInventoryOwnership(inventoryId: string, associationId: string): Promise<boolean> {
-    try {
-      const doc = await adminDb.collection('inventaires').doc(inventoryId).get()
-      return doc.exists && doc.data()?.associationId === associationId
-    } catch {
-      return false
-    }
-  },
-
   async getInventoryAssociationId(inventoryId: string): Promise<Result<string>> {
     try {
       const doc = await adminDb.collection('inventaires').doc(inventoryId).get()

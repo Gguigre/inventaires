@@ -5,6 +5,7 @@ import {
   createPublicCorrectionUseCase, createPublicAnomalyCorrectionUseCase,
 } from './use-cases'
 import { controlsRepository } from '../data/repository'
+import { inventoryRepository } from '@/features/inventories/data/repository'
 import { getActiveAlerts } from '@/shared/data/alerts-repository'
 import type { AuthenticatedUser } from '@/shared/lib/auth'
 import type { CreateCorrectionInput, CreateAnomalyCorrectionInput } from './types'
@@ -21,8 +22,13 @@ vi.mock('../data/repository', () => ({
     createCorrection: vi.fn(),
     getAlertThreshold: vi.fn(),
     createAnomalyCorrection: vi.fn(),
-    verifyInventoryOwnership: vi.fn(),
     getInventoryAssociationId: vi.fn(),
+  },
+}))
+
+vi.mock('@/features/inventories/data/repository', () => ({
+  inventoryRepository: {
+    checkInventoryOwnership: vi.fn(),
   },
 }))
 
@@ -116,7 +122,7 @@ describe('createCorrectionUseCase', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(controlsRepository.getAlertThreshold).mockResolvedValue(30)
-    vi.mocked(controlsRepository.verifyInventoryOwnership).mockResolvedValue(true)
+    vi.mocked(inventoryRepository.checkInventoryOwnership).mockResolvedValue({ ok: true, value: undefined })
   })
 
   it("retourne une erreur si la date est vide", async () => {
@@ -145,7 +151,7 @@ describe('createCorrectionUseCase', () => {
   })
 
   it("retourne une erreur si l'inventaire n'appartient pas à l'association", async () => {
-    vi.mocked(controlsRepository.verifyInventoryOwnership).mockResolvedValue(false)
+    vi.mocked(inventoryRepository.checkInventoryOwnership).mockResolvedValue({ ok: false, error: 'Accès non autorisé.' })
     const result = await createCorrectionUseCase(mockInput, mockUser)
     expect(result.ok).toBe(false)
     expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
@@ -175,19 +181,19 @@ const mockAnomalyInput: CreateAnomalyCorrectionInput = {
 describe('createAnomalyCorrectionUseCase', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(controlsRepository.verifyInventoryOwnership).mockResolvedValue(true)
+    vi.mocked(inventoryRepository.checkInventoryOwnership).mockResolvedValue({ ok: true, value: undefined })
     vi.mocked(controlsRepository.createAnomalyCorrection).mockResolvedValue({ ok: true, value: undefined })
   })
 
   it("retourne une erreur si l'associationId ne correspond pas à l'utilisateur", async () => {
     const result = await createAnomalyCorrectionUseCase({ ...mockAnomalyInput, associationId: 'autre-asso' }, mockUser)
     expect(result.ok).toBe(false)
-    expect(controlsRepository.verifyInventoryOwnership).not.toHaveBeenCalled()
+    expect(inventoryRepository.checkInventoryOwnership).not.toHaveBeenCalled()
     expect(controlsRepository.createAnomalyCorrection).not.toHaveBeenCalled()
   })
 
   it("retourne une erreur si l'inventaire n'appartient pas à l'association", async () => {
-    vi.mocked(controlsRepository.verifyInventoryOwnership).mockResolvedValue(false)
+    vi.mocked(inventoryRepository.checkInventoryOwnership).mockResolvedValue({ ok: false, error: 'Accès non autorisé.' })
     const result = await createAnomalyCorrectionUseCase(mockAnomalyInput, mockUser)
     expect(result.ok).toBe(false)
     expect(controlsRepository.createAnomalyCorrection).not.toHaveBeenCalled()
@@ -196,7 +202,7 @@ describe('createAnomalyCorrectionUseCase', () => {
   it('enregistre la correction si les vérifications passent', async () => {
     const result = await createAnomalyCorrectionUseCase(mockAnomalyInput, mockUser)
     expect(result.ok).toBe(true)
-    expect(controlsRepository.verifyInventoryOwnership).toHaveBeenCalledWith('inv-1', 'asso-1')
+    expect(inventoryRepository.checkInventoryOwnership).toHaveBeenCalledWith('inv-1', 'asso-1')
     expect(controlsRepository.createAnomalyCorrection).toHaveBeenCalledWith(mockAnomalyInput)
   })
 
