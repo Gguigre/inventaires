@@ -6,6 +6,8 @@ import { VehicleFleetStatusPage } from '@/features/vehicle-tracking/ui/VehicleFl
 export default async function VehiculesPage() {
   const user = await getAuthenticatedUser()
   if (!user) redirect('/login')
+  if (user.role === 'superadmin' && !user.associationId) redirect('/admin')
+  if (user.role === 'admin' && !user.associationId) redirect('/associations')
 
   const result = await getFleetStatusUseCase(user.associationId)
   if (!result.ok) {
