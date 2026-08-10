@@ -133,6 +133,36 @@ export const validatorRepository = {
     }
   },
 
+  async listItemCompartmentIds(
+    inventoryId: string,
+  ): Promise<Result<Map<string, string>>> {
+    try {
+      const compartmentsSnap = await adminDb
+        .collection("emplacements")
+        .where("inventoryId", "==", inventoryId)
+        .get();
+      const compartmentIds = compartmentsSnap.docs.map((d) => d.id);
+      if (compartmentIds.length === 0) return ok(new Map());
+
+      const itemSnaps = await Promise.all(
+        chunkArray(compartmentIds, FIRESTORE_IN_LIMIT).map((chunk) =>
+          adminDb.collection("materiels").where("compartmentId", "in", chunk).get(),
+        ),
+      );
+      const itemToCompartment = new Map<string, string>();
+      for (const snap of itemSnaps) {
+        for (const doc of snap.docs) {
+          itemToCompartment.set(doc.id, doc.data().compartmentId as string);
+        }
+      }
+      return ok(itemToCompartment);
+    } catch (error) {
+      return err(
+        `Impossible de vérifier les matériels. Erreur: ${(error as Error).message}`,
+      );
+    }
+  },
+
   async saveControl(
     submission: ControlSubmission,
     associationId: string,

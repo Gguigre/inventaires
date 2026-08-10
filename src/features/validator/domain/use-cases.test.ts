@@ -11,6 +11,7 @@ vi.mock('../data/repository', () => ({
     getInventoryAssociationId: vi.fn(),
     getAssociationEmails: vi.fn(),
     listRecentControls: vi.fn(),
+    listItemCompartmentIds: vi.fn(),
   },
 }))
 
@@ -114,6 +115,10 @@ describe('listRecentControlsUseCase', () => {
 describe('submitControlUseCase', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(validatorRepository.listItemCompartmentIds).mockResolvedValue({
+      ok: true,
+      value: new Map([['mat-1', 'emp-1']]),
+    })
     vi.mocked(validatorRepository.saveControl).mockResolvedValue({
       ok: true,
       value: { controlId: 'ctrl-1' },
@@ -142,6 +147,24 @@ describe('submitControlUseCase', () => {
 
   it("retourne une erreur si les résultats sont vides", async () => {
     const result = await submitControlUseCase({ ...mockSubmission, results: [] }, mockEmailContext)
+    expect(result.ok).toBe(false)
+    expect(validatorRepository.saveControl).not.toHaveBeenCalled()
+  })
+
+  it("rejette un résultat dont le matériel n'appartient pas à cet inventaire", async () => {
+    const result = await submitControlUseCase(
+      { ...mockSubmission, results: [{ itemId: 'mat-etranger', compartmentId: 'emp-1', status: 'present' }] },
+      mockEmailContext,
+    )
+    expect(result.ok).toBe(false)
+    expect(validatorRepository.saveControl).not.toHaveBeenCalled()
+  })
+
+  it("rejette un résultat dont le compartmentId ne correspond pas au matériel", async () => {
+    const result = await submitControlUseCase(
+      { ...mockSubmission, results: [{ itemId: 'mat-1', compartmentId: 'emp-etranger', status: 'present' }] },
+      mockEmailContext,
+    )
     expect(result.ok).toBe(false)
     expect(validatorRepository.saveControl).not.toHaveBeenCalled()
   })

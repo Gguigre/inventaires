@@ -35,6 +35,11 @@ export async function submitControlUseCase(
   if (!submission.verifierName.trim()) return err('Le nom du vérificateur est obligatoire.')
   if (submission.results.length === 0) return err('Le contrôle ne contient aucun résultat.')
 
+  const itemsResult = await validatorRepository.listItemCompartmentIds(submission.inventoryId)
+  if (!itemsResult.ok) return itemsResult
+  const isValid = submission.results.every((r) => itemsResult.value.get(r.itemId) === r.compartmentId)
+  if (!isValid) return err('Contrôle invalide : matériel ou emplacement introuvable dans cet inventaire.')
+
   const assocResult = await validatorRepository.getInventoryAssociationId(submission.inventoryId)
   const associationId = assocResult.ok ? assocResult.value : ''
 
