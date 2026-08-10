@@ -116,6 +116,7 @@ describe('createCorrectionUseCase', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(controlsRepository.getAlertThreshold).mockResolvedValue(30)
+    vi.mocked(controlsRepository.verifyInventoryOwnership).mockResolvedValue(true)
   })
 
   it("retourne une erreur si la date est vide", async () => {
@@ -139,6 +140,13 @@ describe('createCorrectionUseCase', () => {
 
   it("retourne une erreur si l'associationId ne correspond pas à l'utilisateur", async () => {
     const result = await createCorrectionUseCase({ ...mockInput, associationId: 'autre-asso' }, mockUser)
+    expect(result.ok).toBe(false)
+    expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
+  })
+
+  it("retourne une erreur si l'inventaire n'appartient pas à l'association", async () => {
+    vi.mocked(controlsRepository.verifyInventoryOwnership).mockResolvedValue(false)
+    const result = await createCorrectionUseCase(mockInput, mockUser)
     expect(result.ok).toBe(false)
     expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
   })

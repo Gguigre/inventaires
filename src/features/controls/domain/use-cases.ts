@@ -46,6 +46,8 @@ export async function createCorrectionUseCase(
 ): Promise<Result<void>> {
   if (!input.newExpiryDate) return err('La date est obligatoire.')
   if (input.associationId !== user.associationId) return err('Non autorisé.')
+  const owns = await controlsRepository.verifyInventoryOwnership(input.inventoryId, input.associationId)
+  if (!owns) return err('Non autorisé.')
   const thresholdDays = await controlsRepository.getAlertThreshold(input.associationId)
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() + thresholdDays)
