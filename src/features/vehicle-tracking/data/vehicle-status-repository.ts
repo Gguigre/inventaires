@@ -13,6 +13,7 @@ export interface VehicleStatusRecord {
   isCircuitCut: boolean
   stableSince: Date
   lastSeenAt: Date
+  lastReceivedAt: Date
   poweredAlertSent: boolean
 }
 
@@ -24,13 +25,15 @@ export interface VehiclePositionRecord {
 }
 
 function toStatusRecord(data: FirebaseFirestore.DocumentData): VehicleStatusRecord {
+  const lastSeenAt = (data.lastSeenAt as Timestamp).toDate()
   return {
     associationId: data.associationId as string,
     lat: data.lat as number | undefined,
     lng: data.lng as number | undefined,
     isCircuitCut: data.isCircuitCut as boolean,
     stableSince: (data.stableSince as Timestamp).toDate(),
-    lastSeenAt: (data.lastSeenAt as Timestamp).toDate(),
+    lastSeenAt,
+    lastReceivedAt: (data.lastReceivedAt as Timestamp | undefined)?.toDate() ?? lastSeenAt,
     poweredAlertSent: (data.poweredAlertSent as boolean) ?? false,
   }
 }
@@ -45,10 +48,11 @@ export async function getVehicleStatus(inventoryId: string): Promise<Result<Vehi
   }
 }
 
-export async function touchLastSeen(inventoryId: string, timestamp: Date): Promise<Result<void>> {
+export async function touchLastSeen(inventoryId: string, timestamp: Date, receivedAt: Date): Promise<Result<void>> {
   try {
     await adminDb.collection('vehicleStatuses').doc(inventoryId).update({
       lastSeenAt: Timestamp.fromDate(timestamp),
+      lastReceivedAt: Timestamp.fromDate(receivedAt),
     })
     return ok(undefined)
   } catch (error) {
@@ -62,6 +66,7 @@ export async function recordVehiclePoint(input: {
   position: { lat: number; lng: number } | null
   isCircuitCut: boolean
   timestamp: Date
+  receivedAt: Date
 }): Promise<Result<void>> {
   try {
     const timestamp = Timestamp.fromDate(input.timestamp)
@@ -73,6 +78,7 @@ export async function recordVehiclePoint(input: {
         isCircuitCut: input.isCircuitCut,
         stableSince: timestamp,
         lastSeenAt: timestamp,
+        lastReceivedAt: Timestamp.fromDate(input.receivedAt),
         poweredAlertSent: false,
       },
       { merge: true },

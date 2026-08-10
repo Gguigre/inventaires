@@ -98,8 +98,8 @@ export async function receiveVehicleStatusUseCase(
   if (current.value) {
     if (input.timestamp.getTime() <= current.value.lastSeenAt.getTime()) return ok(undefined)
 
-    const secondsSinceLastSeen = (now.getTime() - current.value.lastSeenAt.getTime()) / MS_PER_SECOND
-    if (secondsSinceLastSeen < MIN_PING_INTERVAL_SECONDS) return err(ERROR_RATE_LIMITED)
+    const secondsSinceLastReceived = (now.getTime() - current.value.lastReceivedAt.getTime()) / MS_PER_SECOND
+    if (secondsSinceLastReceived < MIN_PING_INTERVAL_SECONDS) return err(ERROR_RATE_LIMITED)
 
     const currentPosition =
       current.value.lat !== undefined && current.value.lng !== undefined
@@ -112,7 +112,7 @@ export async function receiveVehicleStatusUseCase(
 
     const isUnchanged = isSamePosition && current.value.isCircuitCut === input.isCircuitCut
     if (isUnchanged) {
-      const touchResult = await vehicleTrackingRepository.touchLastSeen(inventoryId, input.timestamp)
+      const touchResult = await vehicleTrackingRepository.touchLastSeen(inventoryId, input.timestamp, now)
       if (!touchResult.ok) return touchResult
 
       sendPoweredAlertIfDue({
@@ -134,6 +134,7 @@ export async function receiveVehicleStatusUseCase(
     position,
     isCircuitCut: input.isCircuitCut,
     timestamp: input.timestamp,
+    receivedAt: now,
   })
 }
 
