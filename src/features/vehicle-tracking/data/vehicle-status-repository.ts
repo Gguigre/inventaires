@@ -8,11 +8,12 @@ import { POSITION_RETENTION_DAYS, MS_PER_DAY, MAX_POSITION_HISTORY_POINTS } from
 
 export interface VehicleStatusRecord {
   associationId: string
-  lat: number
-  lng: number
+  lat?: number
+  lng?: number
   isCircuitCut: boolean
   stableSince: Date
   lastSeenAt: Date
+  lastReceivedAt: Date
   poweredAlertSent: boolean
 }
 
@@ -24,13 +25,15 @@ export interface VehiclePositionRecord {
 }
 
 function toStatusRecord(data: FirebaseFirestore.DocumentData): VehicleStatusRecord {
+  const lastSeenAt = (data.lastSeenAt as Timestamp).toDate()
   return {
     associationId: data.associationId as string,
-    lat: data.lat as number,
-    lng: data.lng as number,
+    lat: data.lat as number | undefined,
+    lng: data.lng as number | undefined,
     isCircuitCut: data.isCircuitCut as boolean,
     stableSince: (data.stableSince as Timestamp).toDate(),
-    lastSeenAt: (data.lastSeenAt as Timestamp).toDate(),
+    lastSeenAt,
+    lastReceivedAt: (data.lastReceivedAt as Timestamp | undefined)?.toDate() ?? lastSeenAt,
     poweredAlertSent: (data.poweredAlertSent as boolean) ?? false,
   }
 }
@@ -45,10 +48,11 @@ export async function getVehicleStatus(inventoryId: string): Promise<Result<Vehi
   }
 }
 
-export async function touchLastSeen(inventoryId: string, timestamp: Date): Promise<Result<void>> {
+export async function touchLastSeen(inventoryId: string, timestamp: Date, receivedAt: Date): Promise<Result<void>> {
   try {
     await adminDb.collection('vehicleStatuses').doc(inventoryId).update({
       lastSeenAt: Timestamp.fromDate(timestamp),
+      lastReceivedAt: Timestamp.fromDate(receivedAt),
     })
     return ok(undefined)
   } catch (error) {
@@ -59,35 +63,41 @@ export async function touchLastSeen(inventoryId: string, timestamp: Date): Promi
 export async function recordVehiclePoint(input: {
   inventoryId: string
   associationId: string
-  lat: number
-  lng: number
+  position: { lat: number; lng: number } | null
   isCircuitCut: boolean
   timestamp: Date
+  receivedAt: Date
 }): Promise<Result<void>> {
   try {
     const timestamp = Timestamp.fromDate(input.timestamp)
-    const expiresAt = Timestamp.fromDate(
-      new Date(input.timestamp.getTime() + POSITION_RETENTION_DAYS * MS_PER_DAY),
+
+    await adminDb.collection('vehicleStatuses').doc(input.inventoryId).set(
+      {
+        associationId: input.associationId,
+        ...(input.position ? { lat: input.position.lat, lng: input.position.lng } : {}),
+        isCircuitCut: input.isCircuitCut,
+        stableSince: timestamp,
+        lastSeenAt: timestamp,
+        lastReceivedAt: Timestamp.fromDate(input.receivedAt),
+        poweredAlertSent: false,
+      },
+      { merge: true },
     )
 
-    await adminDb.collection('vehicleStatuses').doc(input.inventoryId).set({
-      associationId: input.associationId,
-      lat: input.lat,
-      lng: input.lng,
-      isCircuitCut: input.isCircuitCut,
-      stableSince: timestamp,
-      lastSeenAt: timestamp,
-      poweredAlertSent: false,
-    })
-    await adminDb.collection('vehiclePositions').add({
-      associationId: input.associationId,
-      inventoryId: input.inventoryId,
-      lat: input.lat,
-      lng: input.lng,
-      isCircuitCut: input.isCircuitCut,
-      timestamp,
-      expiresAt,
-    })
+    if (input.position) {
+      const expiresAt = Timestamp.fromDate(
+        new Date(input.timestamp.getTime() + POSITION_RETENTION_DAYS * MS_PER_DAY),
+      )
+      await adminDb.collection('vehiclePositions').add({
+        associationId: input.associationId,
+        inventoryId: input.inventoryId,
+        lat: input.position.lat,
+        lng: input.position.lng,
+        isCircuitCut: input.isCircuitCut,
+        timestamp,
+        expiresAt,
+      })
+    }
     return ok(undefined)
   } catch (error) {
     return err(`Impossible d'enregistrer la position. Erreur: ${(error as Error).message}`)

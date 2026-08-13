@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import type { CompartmentWithItems, Inventory } from '../domain/types'
+import type { CompartmentWithItems, PublicInventory } from '../domain/types'
 import { useValidatorOrchestrator } from './hooks/useValidatorOrchestrator'
 import { ProgressBar } from './ProgressBar'
 import { ItemCard } from './ItemCard'
@@ -17,7 +17,7 @@ const BG_SCALE = 120
 const MAX_BG_OPACITY = 0.85
 
 interface ValidatorOrchestratorProps {
-  inventory: Inventory
+  inventory: PublicInventory
   compartments: CompartmentWithItems[]
   lastExpiryDates: Record<string, string>
 }

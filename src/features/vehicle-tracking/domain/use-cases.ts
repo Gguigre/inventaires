@@ -4,7 +4,7 @@ import type { Result } from '@/shared/domain/result'
 import { inventoryRepository } from '@/features/inventories/data/repository'
 import { vehicleTrackingRepository } from '../data/repository'
 import { generateApiKey, hashApiKey } from './api-key'
-import { haversineDistanceMeters } from './geo'
+import { haversineDistanceMeters, roundCoordinate } from './geo'
 import { sendPoweredAlertIfDue } from './powered-alert-use-case'
 import { DEDUP_DISTANCE_METERS, MIN_PING_INTERVAL_SECONDS, MAX_TIMESTAMP_DRIFT_SECONDS, MS_PER_SECOND, MS_PER_HOUR, TIME_RANGE_HOURS, ERROR_UNAUTHORIZED, ERROR_RATE_LIMITED } from './constants'
 import type { VehicleStatus, UnlinkedInventory, PositionPoint, TimeRange } from './types'
@@ -62,8 +62,8 @@ export async function getVehicleDetailUseCase(inventoryId: string, associationId
 
 export interface ReceiveVehicleStatusInput {
   apiKey: string
-  lat: number
-  lng: number
+  lat?: number
+  lng?: number
   isCircuitCut: boolean
   timestamp: Date
 }
@@ -72,12 +72,17 @@ export async function receiveVehicleStatusUseCase(
   input: ReceiveVehicleStatusInput,
   now: Date = new Date(),
 ): Promise<Result<void>> {
-  if (Number.isNaN(input.lat) || input.lat < -90 || input.lat > 90) return err('Latitude invalide.')
-  if (Number.isNaN(input.lng) || input.lng < -180 || input.lng > 180) return err('Longitude invalide.')
+  const hasLat = input.lat !== undefined
+  const hasLng = input.lng !== undefined
+  if (hasLat !== hasLng) return err('La position doit inclure latitude et longitude, ou aucune des deux.')
+  if (hasLat && (Number.isNaN(input.lat) || input.lat! < -90 || input.lat! > 90)) return err('Latitude invalide.')
+  if (hasLng && (Number.isNaN(input.lng) || input.lng! < -180 || input.lng! > 180)) return err('Longitude invalide.')
   if (Number.isNaN(input.timestamp.getTime())) return err('Horodatage invalide.')
   if (Math.abs(input.timestamp.getTime() - now.getTime()) > MAX_TIMESTAMP_DRIFT_SECONDS * MS_PER_SECOND) {
     return err('Horodatage invalide.')
   }
+
+  const position = hasLat && hasLng ? { lat: roundCoordinate(input.lat!), lng: roundCoordinate(input.lng!) } : null
 
   const device = await vehicleTrackingRepository.findDeviceByKeyHash(hashApiKey(input.apiKey))
   if (!device.ok) return device
@@ -93,13 +98,21 @@ export async function receiveVehicleStatusUseCase(
   if (current.value) {
     if (input.timestamp.getTime() <= current.value.lastSeenAt.getTime()) return ok(undefined)
 
-    const secondsSinceLastSeen = (now.getTime() - current.value.lastSeenAt.getTime()) / MS_PER_SECOND
-    if (secondsSinceLastSeen < MIN_PING_INTERVAL_SECONDS) return err(ERROR_RATE_LIMITED)
+    const secondsSinceLastReceived = (now.getTime() - current.value.lastReceivedAt.getTime()) / MS_PER_SECOND
+    if (secondsSinceLastReceived < MIN_PING_INTERVAL_SECONDS) return err(ERROR_RATE_LIMITED)
 
-    const distance = haversineDistanceMeters(current.value, input)
-    const isUnchanged = distance < DEDUP_DISTANCE_METERS && current.value.isCircuitCut === input.isCircuitCut
+    const currentPosition =
+      current.value.lat !== undefined && current.value.lng !== undefined
+        ? { lat: current.value.lat, lng: current.value.lng }
+        : null
+    const isSamePosition =
+      position === null
+        ? currentPosition === null
+        : currentPosition !== null && haversineDistanceMeters(currentPosition, position) < DEDUP_DISTANCE_METERS
+
+    const isUnchanged = isSamePosition && current.value.isCircuitCut === input.isCircuitCut
     if (isUnchanged) {
-      const touchResult = await vehicleTrackingRepository.touchLastSeen(inventoryId, input.timestamp)
+      const touchResult = await vehicleTrackingRepository.touchLastSeen(inventoryId, input.timestamp, now)
       if (!touchResult.ok) return touchResult
 
       sendPoweredAlertIfDue({
@@ -118,10 +131,10 @@ export async function receiveVehicleStatusUseCase(
   return vehicleTrackingRepository.recordVehiclePoint({
     inventoryId,
     associationId,
-    lat: input.lat,
-    lng: input.lng,
+    position,
     isCircuitCut: input.isCircuitCut,
     timestamp: input.timestamp,
+    receivedAt: now,
   })
 }
 
@@ -146,7 +159,7 @@ export async function getFleetStatusUseCase(associationId: string): Promise<Resu
           inventoryId,
           name: namesResult.value.get(inventoryId) ?? 'Véhicule supprimé',
           isCircuitCut: status?.isCircuitCut ?? null,
-          position: status ? { lat: status.lat, lng: status.lng } : null,
+          position: status?.lat !== undefined && status?.lng !== undefined ? { lat: status.lat, lng: status.lng } : null,
           stableSince: status?.stableSince ?? null,
           lastSeenAt: status?.lastSeenAt ?? null,
         }

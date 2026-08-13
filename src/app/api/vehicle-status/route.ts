@@ -20,8 +20,8 @@ export async function POST(request: Request) {
     return new Response('Bad Request', { status: 400 })
   }
 
-  const lat = typeof body.lat === 'number' ? body.lat : NaN
-  const lng = typeof body.lng === 'number' ? body.lng : NaN
+  const lat = body.lat === undefined ? undefined : typeof body.lat === 'number' ? body.lat : NaN
+  const lng = body.lng === undefined ? undefined : typeof body.lng === 'number' ? body.lng : NaN
   if (typeof body.isCircuitCut !== 'boolean') return new Response('Bad Request', { status: 400 })
   const timestamp =
     typeof body.timestamp === 'string' || typeof body.timestamp === 'number'
