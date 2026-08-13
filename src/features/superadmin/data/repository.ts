@@ -21,8 +21,12 @@ export const superadminRepository = {
       }
       const uids = [...adminUidByAssoc.values()]
       const emailByUid = new Map<string, string>()
-      for (const chunk of chunkArray(uids, FIREBASE_AUTH_GET_USERS_LIMIT)) {
-        const { users } = await adminAuth.getUsers(chunk.map(uid => ({ uid })))
+      const authResults = await Promise.all(
+        chunkArray(uids, FIREBASE_AUTH_GET_USERS_LIMIT).map((chunk) =>
+          adminAuth.getUsers(chunk.map(uid => ({ uid }))),
+        ),
+      )
+      for (const { users } of authResults) {
         for (const u of users) emailByUid.set(u.uid, u.email ?? '')
       }
       return ok(assocSnap.docs.map(doc => ({

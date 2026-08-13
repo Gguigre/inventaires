@@ -10,15 +10,18 @@ export const teamRepository = {
     try {
       const snap = await adminDb.collection('users').where('associationIds', 'array-contains', associationId).where('role', '==', 'admin').get()
       if (snap.empty) return ok([])
-      const accounts: AdminAccount[] = []
-      for (const chunk of chunkArray(snap.docs, FIREBASE_AUTH_GET_USERS_LIMIT)) {
-        const { users } = await adminAuth.getUsers(chunk.map((d) => ({ uid: d.id })))
-        accounts.push(...users.map((u) => ({
+      const results = await Promise.all(
+        chunkArray(snap.docs, FIREBASE_AUTH_GET_USERS_LIMIT).map((chunk) =>
+          adminAuth.getUsers(chunk.map((d) => ({ uid: d.id }))),
+        ),
+      )
+      const accounts: AdminAccount[] = results.flatMap(({ users }) =>
+        users.map((u) => ({
           uid: u.uid,
           email: u.email ?? '',
           createdAt: u.metadata.creationTime ? new Date(u.metadata.creationTime) : null,
-        })))
-      }
+        })),
+      )
       accounts.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0))
       return ok(accounts)
     } catch (error) {
