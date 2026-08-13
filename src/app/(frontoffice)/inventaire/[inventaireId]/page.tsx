@@ -10,13 +10,15 @@ interface Props {
 
 export default async function InventairePage({ params }: Props) {
   const { inventaireId } = await params
-  const result = await loadInventoryUseCase(inventaireId)
+  const [result, isVehicleResult] = await Promise.all([
+    loadInventoryUseCase(inventaireId),
+    isVehicleUseCase(inventaireId),
+  ])
 
   if (!result.ok) {
     return <ErrorScreen message={result.error} />
   }
 
-  const isVehicleResult = await isVehicleUseCase(inventaireId)
   const isVehicle = isVehicleResult.ok && isVehicleResult.value
 
   const inventory = { id: result.value.inventory.id, name: result.value.inventory.name }
