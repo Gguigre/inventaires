@@ -2,12 +2,12 @@
 'use client'
 
 import { useEffect } from 'react'
-import type { CompartmentWithItems, ControlEmailContext, Inventory, ItemResult } from '../../domain/types'
+import type { CompartmentWithItems, ControlEmailContext, PublicInventory, ItemResult } from '../../domain/types'
 import { submitControlAction } from '../../domain/actions'
 import { useValidatorStore } from './useValidatorStore'
 
 export function useValidatorOrchestrator(
-  inventory: Inventory,
+  inventory: PublicInventory,
   compartments: CompartmentWithItems[],
 ) {
   const store = useValidatorStore()

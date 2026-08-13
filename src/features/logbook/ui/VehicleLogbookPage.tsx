@@ -1,7 +1,7 @@
 // Dépasse 120 lignes : aiguille entre le menu, les 5 formulaires du carnet de bord et le contrôle d'inventaire existant.
 'use client'
 
-import type { CompartmentWithItems, Inventory } from '@/features/validator/domain/types'
+import type { CompartmentWithItems, PublicInventory } from '@/features/validator/domain/types'
 import { ValidatorOrchestrator } from '@/features/validator/ui/ValidatorOrchestrator'
 import { useVehicleLogbook } from './hooks/useVehicleLogbook'
 import { VehicleHubMenu } from './VehicleHubMenu'
@@ -13,7 +13,7 @@ import { DisinfectionLogForm } from './DisinfectionLogForm'
 import { LogbookActionConfirmation } from './LogbookActionConfirmation'
 
 interface VehicleLogbookPageProps {
-  inventory: Inventory
+  inventory: PublicInventory
   compartments: CompartmentWithItems[]
   lastExpiryDates: Record<string, string>
 }

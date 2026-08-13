@@ -19,10 +19,12 @@ export default async function InventairePage({ params }: Props) {
   const isVehicleResult = await isVehicleUseCase(inventaireId)
   const isVehicle = isVehicleResult.ok && isVehicleResult.value
 
+  const inventory = { id: result.value.inventory.id, name: result.value.inventory.name }
+
   if (isVehicle) {
     return (
       <VehicleLogbookPage
-        inventory={result.value.inventory}
+        inventory={inventory}
         compartments={result.value.compartments}
         lastExpiryDates={result.value.lastExpiryDates}
       />
@@ -31,7 +33,7 @@ export default async function InventairePage({ params }: Props) {
 
   return (
     <ValidatorOrchestrator
-      inventory={result.value.inventory}
+      inventory={inventory}
       compartments={result.value.compartments}
       lastExpiryDates={result.value.lastExpiryDates}
     />
