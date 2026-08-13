@@ -75,12 +75,16 @@ export const controlsRepository = {
           inventoryName: inventoryNames.get(data.inventoryId) ?? '',
           verifierName: data.verifierName,
           submittedAt,
-          anomalyCount: results.filter(r =>
-            r.status === 'anomaly' || (r.expiryDate && new Date(r.expiryDate) <= submittedAt)
-          ).length,
+          anomalyCount: results.filter(r => {
+            if (r.status === 'anomaly') return true
+            if (!r.expiryDate) return false
+            const d = new Date(r.expiryDate)
+            return Number.isNaN(d.getTime()) || d <= submittedAt
+          }).length,
           atRiskCount: results.filter(r => {
             if (!r.expiryDate) return false
             const d = new Date(r.expiryDate)
+            if (Number.isNaN(d.getTime())) return false
             return d > submittedAt && d <= riskAt
           }).length,
         }
@@ -129,6 +133,10 @@ export const controlsRepository = {
         const correction = bestCorrectionByItem.get(r.itemId)
         if (correction && new Date(correction) > risk) return 'fixed'
         const d = new Date(r.expiryDate)
+        if (Number.isNaN(d.getTime())) {
+          console.error(`[getControlDetail] date de péremption invalide pour l'item ${r.itemId}: "${r.expiryDate}"`)
+          return 'expired'
+        }
         if (d <= now) return 'expired'
         if (d <= risk) return 'at-risk'
         return 'ok'
