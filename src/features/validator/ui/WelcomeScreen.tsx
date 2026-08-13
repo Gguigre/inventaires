@@ -1,9 +1,9 @@
 import Link from 'next/link'
-import type { Inventory } from '../domain/types'
+import type { PublicInventory } from '../domain/types'
 import { SwipeTutorial } from './SwipeTutorial'
 
 interface WelcomeScreenProps {
-  inventory: Inventory
+  inventory: PublicInventory
   compartmentCount: number
   itemCount: number
   onStart: () => void

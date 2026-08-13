@@ -4,6 +4,9 @@ export type Inventory = {
   associationId: string
 }
 
+// Vue publique côté client (frontoffice) : jamais d'ID interne (associationId) exposé au navigateur.
+export type PublicInventory = Omit<Inventory, 'associationId'>
+
 export type Item = {
   id: string
   name: string
