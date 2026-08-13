@@ -1,4 +1,5 @@
 import { adminDb } from '@/shared/data/firebase-admin'
+import { createWithNextOrder } from '@/shared/data/ordered-collection'
 import { ok, err } from '@/shared/domain/result'
 import type { Result } from '@/shared/domain/result'
 import { chunkArray, FIRESTORE_BATCH_LIMIT } from '@/shared/lib/array'
@@ -29,12 +30,11 @@ export async function checkCompartmentIdsOwnership(inventoryId: string, compartm
 export async function createCompartment(inventoryId: string, name: string): Promise<Result<Compartment>> {
   try {
     const ref = adminDb.collection('emplacements').doc()
-    const order = await adminDb.runTransaction(async (t) => {
-      const existing = await t.get(adminDb.collection('emplacements').where('inventoryId', '==', inventoryId).count())
-      const order = existing.data().count + 1
-      t.set(ref, { inventoryId, name, order })
-      return order
-    })
+    const order = await createWithNextOrder(
+      adminDb.collection('emplacements').where('inventoryId', '==', inventoryId),
+      ref,
+      (order) => ({ inventoryId, name, order }),
+    )
     return ok({ id: ref.id, name, order, inventoryId })
   } catch (error) {
     return err(`Impossible de créer l'emplacement. Erreur: ${(error as Error).message}`)

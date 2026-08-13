@@ -1,5 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { adminDb } from '@/shared/data/firebase-admin'
+import { createWithNextOrder } from '@/shared/data/ordered-collection'
 import { ok, err } from '@/shared/domain/result'
 import type { Result } from '@/shared/domain/result'
 import { chunkArray, FIRESTORE_BATCH_LIMIT } from '@/shared/lib/array'
@@ -34,12 +35,11 @@ export async function createItem(
 ): Promise<Result<Item>> {
   try {
     const ref = adminDb.collection('materiels').doc()
-    const order = await adminDb.runTransaction(async (t) => {
-      const existing = await t.get(adminDb.collection('materiels').where('compartmentId', '==', compartmentId).count())
-      const order = existing.data().count + 1
-      t.set(ref, { compartmentId, ...data, order })
-      return order
-    })
+    const order = await createWithNextOrder(
+      adminDb.collection('materiels').where('compartmentId', '==', compartmentId),
+      ref,
+      (order) => ({ compartmentId, ...data, order }),
+    )
     return ok({ id: ref.id, name: data.name, photoUrl: data.photoUrl, hasExpiry: data.hasExpiry, isCritical: data.isCritical, order, compartmentId })
   } catch (error) {
     return err(`Impossible de créer le matériel. Erreur: ${(error as Error).message}`)
