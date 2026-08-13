@@ -6,6 +6,10 @@ import { DEFAULT_ALERT_THRESHOLD_DAYS } from '@/shared/lib/alert-defaults'
 import { startOfToday, todayPlusDays, todayMinusDays } from '@/shared/lib/dates'
 
 const CONTROLS_HISTORY_WINDOW_DAYS = 365
+// Pas de fenêtre temporelle sur les corrections : where(correctedAt >=) nécessiterait un nouvel index
+// composite Firestore. Ce plafond suffit à borner la lecture — les corrections sont des actions
+// manuelles, bien moins fréquentes que les contrôles, et déjà scopées à un seul inventaire ici.
+const CORRECTIONS_READ_LIMIT = 2000
 import type { Result } from '@/shared/domain/result'
 import { ok, err } from '@/shared/domain/result'
 import type {
@@ -116,7 +120,7 @@ export const controlsRepository = {
       const [itemNames, compartmentNames, correctionsSnap, inventoryDoc] = await Promise.all([
         batchGetNames('materiels', itemIds),
         batchGetNames('emplacements', compartmentIds),
-        adminDb.collection('corrections').where('inventoryId', '==', data.inventoryId).get(),
+        adminDb.collection('corrections').where('inventoryId', '==', data.inventoryId).limit(CORRECTIONS_READ_LIMIT).get(),
         adminDb.collection('inventaires').doc(data.inventoryId).get(),
       ])
       const inventoryName = (inventoryDoc.data()?.name as string) ?? ''

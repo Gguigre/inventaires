@@ -13,6 +13,10 @@ import type {
 } from "@/shared/domain/alerts";
 
 const CONTROLS_HISTORY_WINDOW_DAYS = 365;
+// Pas de fenêtre temporelle ici (contrairement à CONTROLS_HISTORY_WINDOW_DAYS) : un where(correctedAt >=)
+// nécessiterait un nouvel index composite Firestore non encore déployé. Ce plafond suffit à borner la
+// croissance — les corrections sont des actions manuelles, bien moins fréquentes que les contrôles.
+const CORRECTIONS_READ_LIMIT = 2000;
 
 async function fetchAlertThreshold(associationId: string): Promise<number> {
   try {
@@ -167,10 +171,12 @@ export async function getActiveAlerts(
       ? await adminDb
           .collection("corrections")
           .where("inventoryId", "==", inventoryId)
+          .limit(CORRECTIONS_READ_LIMIT)
           .get()
       : await adminDb
           .collection("corrections")
           .where("associationId", "==", associationId)
+          .limit(CORRECTIONS_READ_LIMIT)
           .get();
     for (const doc of correctionsSnap.docs) {
       const d = doc.data();
@@ -220,10 +226,12 @@ export async function getActiveAlerts(
           ? await adminDb
               .collection("anomaly_corrections")
               .where("inventoryId", "==", inventoryId)
+              .limit(CORRECTIONS_READ_LIMIT)
               .get()
           : await adminDb
               .collection("anomaly_corrections")
               .where("associationId", "==", associationId)
+              .limit(CORRECTIONS_READ_LIMIT)
               .get();
         const latestAnomalyCorrection = new Map<string, number>();
         for (const doc of anomalyCorrectionsSnap.docs) {
