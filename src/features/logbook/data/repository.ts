@@ -4,6 +4,8 @@ import { ok, err } from '@/shared/domain/result'
 import type { Result } from '@/shared/domain/result'
 import type { NewLogbookEntry, LogbookHistoryEntry } from '../domain/types'
 
+const LOGBOOK_HISTORY_LIMIT = 500
+
 export async function getInventoryAssociationId(inventoryId: string): Promise<Result<string>> {
   try {
     const doc = await adminDb.collection('inventaires').doc(inventoryId).get()
@@ -37,6 +39,7 @@ export async function listLogbookEntries(inventoryId: string): Promise<Result<Lo
       .collection('logbookEntries')
       .where('inventoryId', '==', inventoryId)
       .orderBy('submittedAt', 'desc')
+      .limit(LOGBOOK_HISTORY_LIMIT)
       .get()
     return ok(
       snap.docs.map((doc) => {
