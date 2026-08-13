@@ -1,18 +1,17 @@
 'use client'
 
-import type { AdminAccount } from '../domain/types'
+import type { AdminAccountView } from '../domain/types'
 import { useAdminAccounts } from './hooks/useAdminAccounts'
 import { InviteAdminForm } from './InviteAdminForm'
 
 interface AdminAccountsSectionProps {
-  initialAccounts: AdminAccount[]
-  currentUserUid: string
+  initialAccounts: AdminAccountView[]
 }
 
-export function AdminAccountsSection({ initialAccounts, currentUserUid }: AdminAccountsSectionProps) {
+export function AdminAccountsSection({ initialAccounts }: AdminAccountsSectionProps) {
   const {
     accounts, showInvite, inviteEmail, setInviteEmail, isInviting, inviteError, inviteSuccess,
-    removingUid, removeError,
+    removingEmail, removeError,
     handleInvite, handleRemove, openInvite, cancelInvite,
   } = useAdminAccounts(initialAccounts)
 
@@ -22,7 +21,7 @@ export function AdminAccountsSection({ initialAccounts, currentUserUid }: AdminA
 
       <ul className="space-y-2 mb-4">
         {accounts.map((account) => (
-          <li key={account.uid || account.email} className="flex items-center justify-between gap-3 py-1.5">
+          <li key={account.email} className="flex items-center justify-between gap-3 py-1.5">
             <div className="min-w-0">
               <p className="text-sm text-slate-800 truncate">{account.email}</p>
               {account.createdAt && (
@@ -31,16 +30,16 @@ export function AdminAccountsSection({ initialAccounts, currentUserUid }: AdminA
                 </p>
               )}
             </div>
-            {account.uid && account.uid !== currentUserUid && (
+            {!account.isCurrentUser && (
               <button
                 type="button"
-                data-testid={`btn-remove-admin-${account.uid}`}
-                onClick={() => handleRemove(account.uid)}
-                disabled={removingUid === account.uid}
+                data-testid={`btn-remove-admin-${account.email}`}
+                onClick={() => handleRemove(account.email)}
+                disabled={removingEmail === account.email}
                 className="text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-50 flex-shrink-0"
                 aria-label={`Supprimer le compte ${account.email}`}
               >
-                {removingUid === account.uid ? 'Suppression…' : 'Supprimer'}
+                {removingEmail === account.email ? 'Suppression…' : 'Supprimer'}
               </button>
             )}
           </li>

@@ -48,6 +48,19 @@ describe('listAdminAccountsUseCase', () => {
     expect(result.ok).toBe(true)
     expect(teamRepository.listAdminAccounts).toHaveBeenCalledWith('asso-1')
   })
+
+  it("ne renvoie jamais l'uid Firebase et marque le compte courant", async () => {
+    vi.mocked(teamRepository.listAdminAccounts).mockResolvedValue({ ok: true, value: twoAccounts })
+    const result = await listAdminAccountsUseCase('asso-1', admin)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value).toEqual([
+        { email: 'admin1@b.com', createdAt: null, isCurrentUser: true },
+        { email: 'admin2@b.com', createdAt: null, isCurrentUser: false },
+      ])
+      expect(result.value.every((a) => !('uid' in a))).toBe(true)
+    }
+  })
 })
 
 describe('inviteAdminUseCase', () => {
@@ -98,21 +111,22 @@ describe('removeAdminUseCase', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('retourne une erreur si on tente de supprimer son propre compte', async () => {
-    const result = await removeAdminUseCase('u-1', admin)
+    vi.mocked(teamRepository.listAdminAccounts).mockResolvedValue({ ok: true, value: twoAccounts })
+    const result = await removeAdminUseCase('admin1@b.com', admin)
     expect(result.ok).toBe(false)
-    expect(teamRepository.listAdminAccounts).not.toHaveBeenCalled()
+    expect(teamRepository.removeAdminAccount).not.toHaveBeenCalled()
   })
 
   it("retourne une erreur si c'est le seul compte admin", async () => {
-    vi.mocked(teamRepository.listAdminAccounts).mockResolvedValue({ ok: true, value: [twoAccounts[0]] })
-    const result = await removeAdminUseCase('u-2', admin)
+    vi.mocked(teamRepository.listAdminAccounts).mockResolvedValue({ ok: true, value: [twoAccounts[1]] })
+    const result = await removeAdminUseCase('admin2@b.com', admin)
     expect(result.ok).toBe(false)
     expect(teamRepository.removeAdminAccount).not.toHaveBeenCalled()
   })
 
   it("retourne une erreur si le compte n'appartient pas à cette association", async () => {
     vi.mocked(teamRepository.listAdminAccounts).mockResolvedValue({ ok: true, value: twoAccounts })
-    const result = await removeAdminUseCase('u-inconnu', admin)
+    const result = await removeAdminUseCase('inconnu@b.com', admin)
     expect(result.ok).toBe(false)
     expect(teamRepository.removeAdminAccount).not.toHaveBeenCalled()
   })
@@ -120,7 +134,7 @@ describe('removeAdminUseCase', () => {
   it('supprime le compte si toutes les conditions sont réunies', async () => {
     vi.mocked(teamRepository.listAdminAccounts).mockResolvedValue({ ok: true, value: twoAccounts })
     vi.mocked(teamRepository.removeAdminAccount).mockResolvedValue({ ok: true, value: undefined })
-    const result = await removeAdminUseCase('u-2', admin)
+    const result = await removeAdminUseCase('admin2@b.com', admin)
     expect(result.ok).toBe(true)
     expect(teamRepository.removeAdminAccount).toHaveBeenCalledWith('u-2', 'asso-1')
   })

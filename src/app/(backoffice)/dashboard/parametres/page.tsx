@@ -20,7 +20,6 @@ export default async function ParametresRoute() {
     <SettingsPage
       settings={settingsResult.value}
       adminAccounts={accountsResult.ok ? accountsResult.value : []}
-      currentUserUid={user.uid}
     />
   )
 }

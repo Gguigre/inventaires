@@ -2,18 +2,17 @@
 'use client'
 
 import type { AssociationSettings } from '../domain/types'
-import type { AdminAccount } from '@/features/team/domain/types'
+import type { AdminAccountView } from '@/features/team/domain/types'
 import { useSettingsPage } from './hooks/useSettingsPage'
 import { NotificationEmailsEditor } from './NotificationEmailsEditor'
 import { AdminAccountsSection } from '@/features/team/ui/AdminAccountsSection'
 
 interface SettingsPageProps {
   settings: AssociationSettings
-  adminAccounts: AdminAccount[]
-  currentUserUid: string
+  adminAccounts: AdminAccountView[]
 }
 
-export function SettingsPage({ settings, adminAccounts, currentUserUid }: SettingsPageProps) {
+export function SettingsPage({ settings, adminAccounts }: SettingsPageProps) {
   const {
     name, setName,
     emails, newEmail, setNewEmail, emailError, addEmail, removeEmail,
@@ -77,7 +76,7 @@ export function SettingsPage({ settings, adminAccounts, currentUserUid }: Settin
         />
       </section>
 
-      <AdminAccountsSection initialAccounts={adminAccounts} currentUserUid={currentUserUid} />
+      <AdminAccountsSection initialAccounts={adminAccounts} />
 
       <section className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
         <h2 className="text-base font-semibold text-slate-900">Alertes de péremption</h2>

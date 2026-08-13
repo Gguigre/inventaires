@@ -30,10 +30,10 @@ export async function inviteAdminAction(email: string): Promise<Result<void>> {
   return result
 }
 
-export async function removeAdminAction(targetUid: string): Promise<Result<void>> {
+export async function removeAdminAction(targetEmail: string): Promise<Result<void>> {
   const user = await getAuthenticatedUser()
   if (!user) redirect('/login')
-  const result = await removeAdminUseCase(targetUid, user)
+  const result = await removeAdminUseCase(targetEmail, user)
   if (result.ok) revalidatePath('/dashboard/parametres')
   return result
 }

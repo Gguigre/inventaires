@@ -3,11 +3,13 @@ import type { Result } from '@/shared/domain/result'
 import type { AuthenticatedUser } from '@/shared/lib/auth'
 import { teamRepository } from '../data/repository'
 import { sendInvitationEmail } from '@/shared/lib/admin-email-service'
-import type { AdminAccount, AssociationSummary } from './types'
+import type { AdminAccountView, AssociationSummary } from './types'
 
-export async function listAdminAccountsUseCase(associationId: string, user: AuthenticatedUser): Promise<Result<AdminAccount[]>> {
+export async function listAdminAccountsUseCase(associationId: string, user: AuthenticatedUser): Promise<Result<AdminAccountView[]>> {
   if (user.associationId !== associationId && user.role !== 'superadmin') return err('Accès non autorisé.')
-  return teamRepository.listAdminAccounts(associationId)
+  const result = await teamRepository.listAdminAccounts(associationId)
+  if (!result.ok) return result
+  return ok(result.value.map((a) => ({ email: a.email, createdAt: a.createdAt, isCurrentUser: a.uid === user.uid })))
 }
 
 export async function inviteAdminUseCase(email: string, user: AuthenticatedUser, loginUrl?: string): Promise<Result<void>> {
@@ -25,13 +27,14 @@ export async function inviteAdminUseCase(email: string, user: AuthenticatedUser,
   return ok(undefined)
 }
 
-export async function removeAdminUseCase(targetUid: string, user: AuthenticatedUser): Promise<Result<void>> {
-  if (targetUid === user.uid) return err('Vous ne pouvez pas supprimer votre propre compte.')
+export async function removeAdminUseCase(targetEmail: string, user: AuthenticatedUser): Promise<Result<void>> {
   const accountsResult = await teamRepository.listAdminAccounts(user.associationId)
   if (!accountsResult.ok) return accountsResult
+  const target = accountsResult.value.find((a) => a.email.toLowerCase() === targetEmail.toLowerCase())
+  if (!target) return err('Compte introuvable dans cette association.')
+  if (target.uid === user.uid) return err('Vous ne pouvez pas supprimer votre propre compte.')
   if (accountsResult.value.length <= 1) return err('Impossible de supprimer le seul compte admin.')
-  if (!accountsResult.value.some((a) => a.uid === targetUid)) return err('Compte introuvable dans cette association.')
-  return teamRepository.removeAdminAccount(targetUid, user.associationId)
+  return teamRepository.removeAdminAccount(target.uid, user.associationId)
 }
 
 export async function listUserAssociationsUseCase(user: AuthenticatedUser): Promise<Result<AssociationSummary[]>> {
