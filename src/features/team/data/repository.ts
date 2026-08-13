@@ -69,17 +69,26 @@ export const teamRepository = {
   async removeAdminAccount(uid: string, associationId: string): Promise<Result<void>> {
     try {
       const docRef = adminDb.collection('users').doc(uid)
-      await adminDb.runTransaction(async (t) => {
+      // adminAuth.deleteUser n'est pas idempotent : il doit rester hors de la transaction Firestore,
+      // qui peut rejouer son callback en cas de contention.
+      const shouldDeleteAuthUser = await adminDb.runTransaction(async (t) => {
         const doc = await t.get(docRef)
         const ids = (doc.data()?.associationIds as string[]) ?? []
         const remaining = ids.filter((id) => id !== associationId)
         if (remaining.length === 0) {
-          await adminAuth.deleteUser(uid)
           t.delete(docRef)
-        } else {
-          t.update(docRef, { associationIds: remaining })
+          return true
         }
+        t.update(docRef, { associationIds: remaining })
+        return false
       })
+      if (shouldDeleteAuthUser) {
+        try {
+          await adminAuth.deleteUser(uid)
+        } catch (error) {
+          if ((error as { code?: string }).code !== 'auth/user-not-found') throw error
+        }
+      }
       return ok(undefined)
     } catch (error) {
       return err(`Impossible de supprimer le compte. Erreur: ${(error as Error).message}`)
