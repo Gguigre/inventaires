@@ -124,12 +124,13 @@ export async function deleteInventory(inventoryId: string, associationId: string
     if (!ownership.ok) return ownership
     const compartmentsSnap = await adminDb.collection('emplacements').where('inventoryId', '==', inventoryId).get()
     const compartmentIds = compartmentsSnap.docs.map((d) => d.id)
-    const itemIds: string[] = []
 
-    for (const chunk of chunkArray(compartmentIds, FIRESTORE_IN_LIMIT)) {
-      const itemsSnap = await adminDb.collection('materiels').where('compartmentId', 'in', chunk).get()
-      itemIds.push(...itemsSnap.docs.map((d) => d.id))
-    }
+    const itemsSnaps = await Promise.all(
+      chunkArray(compartmentIds, FIRESTORE_IN_LIMIT).map((chunk) =>
+        adminDb.collection('materiels').where('compartmentId', 'in', chunk).get(),
+      ),
+    )
+    const itemIds = itemsSnaps.flatMap((snap) => snap.docs.map((d) => d.id))
 
     const allRefs = [
       ...itemIds.map((id) => adminDb.collection('materiels').doc(id)),
@@ -160,11 +161,12 @@ export async function duplicateInventory(inventoryId: string, associationId: str
     if (empSnap.empty) return ok({ id: newInvRef.id, name: newName, associationId })
 
     const empIds = empSnap.docs.map((d) => d.id)
-    const allMatDocs: FirebaseFirestore.QueryDocumentSnapshot[] = []
-    for (const chunk of chunkArray(empIds, FIRESTORE_IN_LIMIT)) {
-      const snap = await adminDb.collection('materiels').where('compartmentId', 'in', chunk).get()
-      allMatDocs.push(...snap.docs)
-    }
+    const matSnaps = await Promise.all(
+      chunkArray(empIds, FIRESTORE_IN_LIMIT).map((chunk) =>
+        adminDb.collection('materiels').where('compartmentId', 'in', chunk).get(),
+      ),
+    )
+    const allMatDocs = matSnaps.flatMap((snap) => snap.docs)
     const matsByEmp = new Map<string, FirebaseFirestore.DocumentData[]>()
     for (const doc of allMatDocs) {
       const cid = doc.data().compartmentId as string
