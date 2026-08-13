@@ -139,6 +139,12 @@ describe('createCorrectionUseCase', () => {
     expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
   })
 
+  it("retourne une erreur si la date est invalide", async () => {
+    const result = await createCorrectionUseCase({ ...mockInput, newExpiryDate: 'n’importe quoi' }, mockUser)
+    expect(result.ok).toBe(false)
+    expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
+  })
+
   it("retourne une erreur si la date est exactement à J+30", async () => {
     const result = await createCorrectionUseCase({ ...mockInput, newExpiryDate: dateInDays(30) }, mockUser)
     expect(result.ok).toBe(false)
@@ -303,6 +309,12 @@ describe('createPublicCorrectionUseCase', () => {
     const result = await createPublicCorrectionUseCase({ ...publicInput, newExpiryDate: dateInDays(15) })
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error).toContain('J+30')
+    expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
+  })
+
+  it("retourne une erreur si la date est invalide", async () => {
+    const result = await createPublicCorrectionUseCase({ ...publicInput, newExpiryDate: 'n’importe quoi' })
+    expect(result.ok).toBe(false)
     expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
   })
 

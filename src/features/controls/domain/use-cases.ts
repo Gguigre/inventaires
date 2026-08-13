@@ -52,7 +52,10 @@ export async function createCorrectionUseCase(
   const thresholdDays = await controlsRepository.getAlertThreshold(input.associationId)
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() + thresholdDays)
-  if (new Date(input.newExpiryDate) <= cutoff) return err(`Cette date ne résout pas l'alerte (doit être > J+${thresholdDays}).`)
+  const newExpiryDate = new Date(input.newExpiryDate)
+  if (Number.isNaN(newExpiryDate.getTime()) || newExpiryDate <= cutoff) {
+    return err(`Cette date ne résout pas l'alerte (doit être > J+${thresholdDays}).`)
+  }
   return controlsRepository.createCorrection(input)
 }
 
@@ -79,6 +82,9 @@ export async function createPublicCorrectionUseCase(
   const thresholdDays = await controlsRepository.getAlertThreshold(assocResult.value)
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() + thresholdDays)
-  if (new Date(input.newExpiryDate) <= cutoff) return err(`Cette date ne résout pas l'alerte (doit être > J+${thresholdDays}).`)
+  const newExpiryDate = new Date(input.newExpiryDate)
+  if (Number.isNaN(newExpiryDate.getTime()) || newExpiryDate <= cutoff) {
+    return err(`Cette date ne résout pas l'alerte (doit être > J+${thresholdDays}).`)
+  }
   return controlsRepository.createCorrection({ ...input, associationId: assocResult.value })
 }
