@@ -1,5 +1,8 @@
+// Dépasse 120 lignes : regroupe les 3 sections d'alertes (anomalies, périmés, bientôt périmés)
+// et leurs coquilles partagées (AlertRow, CorrectButton, ExpirySection) dans un seul bloc visuel.
 "use client";
 
+import type { ReactNode } from "react";
 import type { ExpiryAlertItem, AnomalyAlertItem } from "../domain/types";
 import { formatDate } from "@/shared/lib/format";
 
@@ -11,76 +14,85 @@ interface AnomalyAlertsBlockProps {
   onCorrectAnomaly: (item: AnomalyAlertItem) => void;
 }
 
-function AnomalyRow({
-  item,
-  onCorrect,
+function AlertRow({
+  itemName,
+  inventoryName,
+  compartmentName,
+  comment,
+  trailing,
 }: {
-  item: AnomalyAlertItem;
-  onCorrect: (item: AnomalyAlertItem) => void;
+  itemName: string;
+  inventoryName: string;
+  compartmentName: string;
+  comment: string | null;
+  trailing: ReactNode;
 }) {
   return (
     <li className="flex items-center justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-slate-900 truncate">
-          {item.itemName}
+          {itemName}
         </p>
         <p className="text-xs text-slate-400 truncate">
-          {item.inventoryName} · {item.compartmentName}
+          {inventoryName} · {compartmentName}
         </p>
-        {item.comment && (
-          <p className="text-xs text-amber-700 mt-0.5 truncate">
-            {item.comment}
-          </p>
+        {comment && (
+          <p className="text-xs text-amber-700 mt-0.5 truncate">{comment}</p>
         )}
       </div>
-      <button
-        type="button"
-        data-testid={`btn-correct-anomaly-${item.itemId}`}
-        onClick={() => onCorrect(item)}
-        className="flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-      >
-        Corriger
-      </button>
+      {trailing}
     </li>
   );
 }
 
-function ExpiryRow({
-  item,
+function CorrectButton({ testId, onClick }: { testId: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      onClick={onClick}
+      className="flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+    >
+      Corriger
+    </button>
+  );
+}
+
+function ExpirySection({
+  title,
+  colorClass,
+  items,
   onCorrect,
 }: {
-  item: ExpiryAlertItem;
+  title: string;
+  colorClass: string;
+  items: ExpiryAlertItem[];
   onCorrect: (item: ExpiryAlertItem) => void;
 }) {
+  if (items.length === 0) return null;
   return (
-    <li className="flex items-center justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-900 truncate">
-          {item.itemName}
-        </p>
-        <p className="text-xs text-slate-400 truncate">
-          {item.inventoryName} · {item.compartmentName}
-        </p>
-        {item.comment && (
-          <p className="text-xs text-amber-700 mt-0.5 truncate">
-            {item.comment}
-          </p>
-        )}
-      </div>
-      <div className="flex items-center gap-3 flex-shrink-0">
-        <span className="text-xs text-slate-500">
-          {formatDate(item.latestExpiryDate)}
-        </span>
-        <button
-          type="button"
-          data-testid={`btn-correct-${item.itemId}`}
-          onClick={() => onCorrect(item)}
-          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-        >
-          Corriger
-        </button>
-      </div>
-    </li>
+    <div className="py-3">
+      <p className={`text-xs font-bold ${colorClass} uppercase tracking-widest mb-2`}>
+        {title} ({items.length})
+      </p>
+      <ul>
+        {items.map((item) => (
+          <AlertRow
+            key={item.itemId}
+            itemName={item.itemName}
+            inventoryName={item.inventoryName}
+            compartmentName={item.compartmentName}
+            comment={item.comment}
+            trailing={
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="text-xs text-slate-500">{formatDate(item.latestExpiryDate)}</span>
+                <CorrectButton testId={`btn-correct-${item.itemId}`} onClick={() => onCorrect(item)} />
+              </div>
+            }
+          />
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -120,47 +132,25 @@ export function AnomalyAlertsBlock({
             </p>
             <ul>
               {anomalies.map((item) => (
-                <AnomalyRow
+                <AlertRow
                   key={`${item.itemId}-${item.controlId}`}
-                  item={item}
-                  onCorrect={onCorrectAnomaly}
+                  itemName={item.itemName}
+                  inventoryName={item.inventoryName}
+                  compartmentName={item.compartmentName}
+                  comment={item.comment}
+                  trailing={
+                    <CorrectButton
+                      testId={`btn-correct-anomaly-${item.itemId}`}
+                      onClick={() => onCorrectAnomaly(item)}
+                    />
+                  }
                 />
               ))}
             </ul>
           </div>
         )}
-        {expired.length > 0 && (
-          <div className="py-3">
-            <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-2">
-              Périmés ({expired.length})
-            </p>
-            <ul>
-              {expired.map((item) => (
-                <ExpiryRow
-                  key={item.itemId}
-                  item={item}
-                  onCorrect={onCorrect}
-                />
-              ))}
-            </ul>
-          </div>
-        )}
-        {atRisk.length > 0 && (
-          <div className="py-3">
-            <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2">
-              Bientôt périmés ({atRisk.length})
-            </p>
-            <ul>
-              {atRisk.map((item) => (
-                <ExpiryRow
-                  key={item.itemId}
-                  item={item}
-                  onCorrect={onCorrect}
-                />
-              ))}
-            </ul>
-          </div>
-        )}
+        <ExpirySection title="Périmés" colorClass="text-red-600" items={expired} onCorrect={onCorrect} />
+        <ExpirySection title="Bientôt périmés" colorClass="text-amber-600" items={atRisk} onCorrect={onCorrect} />
       </div>
     </div>
   );
