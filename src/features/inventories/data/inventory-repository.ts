@@ -5,6 +5,12 @@ import type { Result } from '@/shared/domain/result'
 import { chunkArray, FIRESTORE_IN_LIMIT, FIRESTORE_BATCH_LIMIT } from '@/shared/lib/array'
 import type { Inventory, InventoryWithCompartmentCount, InventoryWithCompartments, CompartmentWithItems, Item } from '../domain/types'
 
+function verifyOwnership(doc: FirebaseFirestore.DocumentSnapshot, associationId: string): Result<void> {
+  if (!doc.exists) return err("Cet inventaire n'existe pas.")
+  if (doc.data()!.associationId !== associationId) return err('Accès non autorisé.')
+  return ok(undefined)
+}
+
 export async function listInventories(associationId: string): Promise<Result<InventoryWithCompartmentCount[]>> {
   try {
     const snap = await adminDb.collection('inventaires').where('associationId', '==', associationId).get()
@@ -36,8 +42,8 @@ export async function listInventories(associationId: string): Promise<Result<Inv
 export async function getInventory(inventoryId: string, associationId: string): Promise<Result<InventoryWithCompartments>> {
   try {
     const inventoryDoc = await adminDb.collection('inventaires').doc(inventoryId).get()
-    if (!inventoryDoc.exists) return err("Cet inventaire n'existe pas.")
-    if (inventoryDoc.data()!.associationId !== associationId) return err('Accès non autorisé.')
+    const ownership = verifyOwnership(inventoryDoc, associationId)
+    if (!ownership.ok) return ownership
 
     const inventory: Inventory = {
       id: inventoryDoc.id,
@@ -84,9 +90,7 @@ export async function getInventory(inventoryId: string, associationId: string): 
 export async function checkInventoryOwnership(inventoryId: string, associationId: string): Promise<Result<void>> {
   try {
     const doc = await adminDb.collection('inventaires').doc(inventoryId).get()
-    if (!doc.exists) return err("Inventaire introuvable.")
-    if (doc.data()!.associationId !== associationId) return err('Accès non autorisé.')
-    return ok(undefined)
+    return verifyOwnership(doc, associationId)
   } catch (error) {
     return err(`Erreur de vérification. Erreur: ${(error as Error).message}`)
   }
@@ -104,8 +108,8 @@ export async function createInventory(associationId: string, name: string): Prom
 export async function updateInventory(inventoryId: string, associationId: string, name: string): Promise<Result<void>> {
   try {
     const doc = await adminDb.collection('inventaires').doc(inventoryId).get()
-    if (!doc.exists) return err("Cet inventaire n'existe pas.")
-    if (doc.data()!.associationId !== associationId) return err('Accès non autorisé.')
+    const ownership = verifyOwnership(doc, associationId)
+    if (!ownership.ok) return ownership
     await adminDb.collection('inventaires').doc(inventoryId).update({ name })
     return ok(undefined)
   } catch (error) {
@@ -116,8 +120,8 @@ export async function updateInventory(inventoryId: string, associationId: string
 export async function deleteInventory(inventoryId: string, associationId: string): Promise<Result<void>> {
   try {
     const doc = await adminDb.collection('inventaires').doc(inventoryId).get()
-    if (!doc.exists) return err("Cet inventaire n'existe pas.")
-    if (doc.data()!.associationId !== associationId) return err('Accès non autorisé.')
+    const ownership = verifyOwnership(doc, associationId)
+    if (!ownership.ok) return ownership
     const compartmentsSnap = await adminDb.collection('emplacements').where('inventoryId', '==', inventoryId).get()
     const compartmentIds = compartmentsSnap.docs.map((d) => d.id)
     const itemIds: string[] = []
@@ -146,8 +150,8 @@ export async function deleteInventory(inventoryId: string, associationId: string
 export async function duplicateInventory(inventoryId: string, associationId: string): Promise<Result<Inventory>> {
   try {
     const invDoc = await adminDb.collection('inventaires').doc(inventoryId).get()
-    if (!invDoc.exists) return err("Cet inventaire n'existe pas.")
-    if (invDoc.data()!.associationId !== associationId) return err('Accès non autorisé.')
+    const ownership = verifyOwnership(invDoc, associationId)
+    if (!ownership.ok) return ownership
 
     const newName = `Copie de ${invDoc.data()!.name as string}`
     const newInvRef = await adminDb.collection('inventaires').add({ name: newName, associationId })
