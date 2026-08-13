@@ -189,7 +189,7 @@ export async function getActiveAlerts(
           itemId: d.itemId,
           inventoryId: d.inventoryId,
           inventoryName: inventoryNames.get(d.inventoryId) ?? "",
-          compartmentId: existing?.compartmentId ?? "",
+          compartmentId: (d.compartmentId as string) || existing?.compartmentId || "",
           latestExpiryDate: d.newExpiryDate,
           comment: existing?.comment ?? null,
           recordedAtMs: correctedAtMs,

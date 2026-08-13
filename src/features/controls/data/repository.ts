@@ -192,10 +192,13 @@ export const controlsRepository = {
 
   async createCorrection(input: CreateCorrectionInput): Promise<Result<void>> {
     try {
+      const itemDoc = await adminDb.collection('materiels').doc(input.itemId).get()
+      const compartmentId = (itemDoc.data()?.compartmentId as string) ?? ''
       await adminDb.collection('corrections').add({
         itemId: input.itemId,
         inventoryId: input.inventoryId,
         associationId: input.associationId,
+        compartmentId,
         newExpiryDate: input.newExpiryDate,
         correctedBy: input.correctedBy,
         correctedAt: FieldValue.serverTimestamp(),
