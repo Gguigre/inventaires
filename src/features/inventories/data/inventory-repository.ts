@@ -11,8 +11,12 @@ export async function listInventories(associationId: string): Promise<Result<Inv
     if (snap.empty) return ok([])
     const ids = snap.docs.map((d) => d.id)
     const countMap = new Map<string, number>()
-    for (const chunk of chunkArray(ids, FIRESTORE_IN_LIMIT)) {
-      const compSnap = await adminDb.collection('emplacements').where('inventoryId', 'in', chunk).get()
+    const compSnaps = await Promise.all(
+      chunkArray(ids, FIRESTORE_IN_LIMIT).map((chunk) =>
+        adminDb.collection('emplacements').where('inventoryId', 'in', chunk).get(),
+      ),
+    )
+    for (const compSnap of compSnaps) {
       for (const doc of compSnap.docs) {
         const invId = doc.data().inventoryId as string
         countMap.set(invId, (countMap.get(invId) ?? 0) + 1)
@@ -45,8 +49,12 @@ export async function getInventory(inventoryId: string, associationId: string): 
     const itemsByCompartment = new Map<string, Item[]>()
 
     if (compartmentIds.length > 0) {
-      for (const chunk of chunkArray(compartmentIds, FIRESTORE_IN_LIMIT)) {
-        const itemsSnap = await adminDb.collection('materiels').where('compartmentId', 'in', chunk).get()
+      const itemsSnaps = await Promise.all(
+        chunkArray(compartmentIds, FIRESTORE_IN_LIMIT).map((chunk) =>
+          adminDb.collection('materiels').where('compartmentId', 'in', chunk).get(),
+        ),
+      )
+      for (const itemsSnap of itemsSnaps) {
         for (const doc of itemsSnap.docs) {
           const data = doc.data()
           const item: Item = {

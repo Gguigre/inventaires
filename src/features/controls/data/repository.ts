@@ -34,8 +34,12 @@ async function getAlertThreshold(associationId: string): Promise<number> {
 async function batchGetNames(collectionName: string, ids: string[]): Promise<Map<string, string>> {
   const result = new Map<string, string>()
   if (ids.length === 0) return result
-  for (const chunk of chunkArray(ids, FIRESTORE_IN_LIMIT)) {
-    const snap = await adminDb.collection(collectionName).where(FieldPath.documentId(), 'in', chunk).get()
+  const snaps = await Promise.all(
+    chunkArray(ids, FIRESTORE_IN_LIMIT).map((chunk) =>
+      adminDb.collection(collectionName).where(FieldPath.documentId(), 'in', chunk).get(),
+    ),
+  )
+  for (const snap of snaps) {
     for (const doc of snap.docs) result.set(doc.id, doc.data().name ?? '')
   }
   return result

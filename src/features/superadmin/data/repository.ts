@@ -47,11 +47,12 @@ export const superadminRepository = {
 
       const controlIds = [...new Set(snap.docs.map((d) => d.data().controlId as string))]
       const verifierNames = new Map<string, string>()
-      for (const chunk of chunkArray(controlIds, FIRESTORE_IN_LIMIT)) {
-        const controlSnap = await adminDb
-          .collection('controles')
-          .where(FieldPath.documentId(), 'in', chunk)
-          .get()
+      const controlSnaps = await Promise.all(
+        chunkArray(controlIds, FIRESTORE_IN_LIMIT).map((chunk) =>
+          adminDb.collection('controles').where(FieldPath.documentId(), 'in', chunk).get(),
+        ),
+      )
+      for (const controlSnap of controlSnaps) {
         for (const doc of controlSnap.docs) {
           verifierNames.set(doc.id, (doc.data().verifierName as string) ?? '')
         }
