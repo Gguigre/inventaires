@@ -60,6 +60,8 @@ export async function createPublicAnomalyCorrectionUseCase(
   input: { itemId: string; inventoryId: string; correctedBy: string },
 ): Promise<Result<void>> {
   if (!input.correctedBy.trim()) return err('Le nom du correcteur est obligatoire.')
+  const itemOwnership = await inventoryRepository.checkItemOwnership(input.itemId, input.inventoryId)
+  if (!itemOwnership.ok) return err('Matériel introuvable dans cet inventaire.')
   const assocResult = await controlsRepository.getInventoryAssociationId(input.inventoryId)
   if (!assocResult.ok) return assocResult
   return controlsRepository.createAnomalyCorrection({ ...input, associationId: assocResult.value })
@@ -70,6 +72,8 @@ export async function createPublicCorrectionUseCase(
 ): Promise<Result<void>> {
   if (!input.correctedBy.trim()) return err('Le nom du correcteur est obligatoire.')
   if (!input.newExpiryDate) return err('La date est obligatoire.')
+  const itemOwnership = await inventoryRepository.checkItemOwnership(input.itemId, input.inventoryId)
+  if (!itemOwnership.ok) return err('Matériel introuvable dans cet inventaire.')
   const assocResult = await controlsRepository.getInventoryAssociationId(input.inventoryId)
   if (!assocResult.ok) return assocResult
   const thresholdDays = await controlsRepository.getAlertThreshold(assocResult.value)

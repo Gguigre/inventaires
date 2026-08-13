@@ -29,6 +29,7 @@ vi.mock('../data/repository', () => ({
 vi.mock('@/features/inventories/data/repository', () => ({
   inventoryRepository: {
     checkInventoryOwnership: vi.fn(),
+    checkItemOwnership: vi.fn(),
   },
 }))
 
@@ -218,12 +219,21 @@ describe('createPublicAnomalyCorrectionUseCase', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(inventoryRepository.checkItemOwnership).mockResolvedValue({ ok: true, value: undefined })
     vi.mocked(controlsRepository.getInventoryAssociationId).mockResolvedValue({ ok: true, value: 'asso-1' })
     vi.mocked(controlsRepository.createAnomalyCorrection).mockResolvedValue({ ok: true, value: undefined })
   })
 
   it("retourne une erreur si le nom du correcteur est vide", async () => {
     const result = await createPublicAnomalyCorrectionUseCase({ ...publicInput, correctedBy: '   ' })
+    expect(result.ok).toBe(false)
+    expect(controlsRepository.getInventoryAssociationId).not.toHaveBeenCalled()
+    expect(controlsRepository.createAnomalyCorrection).not.toHaveBeenCalled()
+  })
+
+  it("retourne une erreur si le matériel n'appartient pas à cet inventaire", async () => {
+    vi.mocked(inventoryRepository.checkItemOwnership).mockResolvedValue({ ok: false, error: 'Accès non autorisé.' })
+    const result = await createPublicAnomalyCorrectionUseCase(publicInput)
     expect(result.ok).toBe(false)
     expect(controlsRepository.getInventoryAssociationId).not.toHaveBeenCalled()
     expect(controlsRepository.createAnomalyCorrection).not.toHaveBeenCalled()
@@ -255,6 +265,7 @@ describe('createPublicCorrectionUseCase', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(inventoryRepository.checkItemOwnership).mockResolvedValue({ ok: true, value: undefined })
     vi.mocked(controlsRepository.getInventoryAssociationId).mockResolvedValue({ ok: true, value: 'asso-1' })
     vi.mocked(controlsRepository.getAlertThreshold).mockResolvedValue(30)
     vi.mocked(controlsRepository.createCorrection).mockResolvedValue({ ok: true, value: undefined })
@@ -270,6 +281,14 @@ describe('createPublicCorrectionUseCase', () => {
   it('retourne une erreur si la date est vide', async () => {
     const result = await createPublicCorrectionUseCase({ ...publicInput, newExpiryDate: '' })
     expect(result.ok).toBe(false)
+    expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
+  })
+
+  it("retourne une erreur si le matériel n'appartient pas à cet inventaire", async () => {
+    vi.mocked(inventoryRepository.checkItemOwnership).mockResolvedValue({ ok: false, error: 'Accès non autorisé.' })
+    const result = await createPublicCorrectionUseCase(publicInput)
+    expect(result.ok).toBe(false)
+    expect(controlsRepository.getInventoryAssociationId).not.toHaveBeenCalled()
     expect(controlsRepository.createCorrection).not.toHaveBeenCalled()
   })
 
