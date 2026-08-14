@@ -33,27 +33,39 @@ export function VehiclePositionHistoryMap({ positions, isLoading = false }: Vehi
   const last = positions[positions.length - 1]
 
   return (
-    <div className="h-96 w-full rounded-2xl overflow-hidden border border-slate-200" data-testid="position-history-map">
-      <MapContainer center={[last.lat, last.lng]} zoom={13} className="h-full w-full">
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
-        />
-        <Polyline positions={path} pathOptions={{ color: '#2563eb', weight: 3 }} />
-        {positions.map((point, index) => (
-          <CircleMarker
-            key={index}
-            center={[point.lat, point.lng]}
-            radius={index === positions.length - 1 ? 7 : 4}
-            pathOptions={{
-              color: point.isCircuitCut ? '#dc2626' : '#059669',
-              fillOpacity: 0.8,
-            }}
-          >
-            <Popup>{formatDateTime(point.timestamp)}</Popup>
-          </CircleMarker>
-        ))}
-      </MapContainer>
+    <div>
+      <div className="h-96 w-full rounded-2xl overflow-hidden border border-slate-200" data-testid="position-history-map">
+        <MapContainer center={[last.lat, last.lng]} zoom={13} className="h-full w-full">
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution="&copy; OpenStreetMap contributors"
+          />
+          <Polyline positions={path} pathOptions={{ color: '#2563eb', weight: 3 }} />
+          {positions.map((point, index) => (
+            <CircleMarker
+              key={index}
+              center={[point.lat, point.lng]}
+              radius={index === positions.length - 1 ? 7 : 4}
+              pathOptions={{
+                color: point.isCircuitCut ? '#dc2626' : '#059669',
+                fillOpacity: 0.8,
+              }}
+            >
+              <Popup>{formatDateTime(point.timestamp)}</Popup>
+            </CircleMarker>
+          ))}
+        </MapContainer>
+      </div>
+      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500" data-testid="position-history-legend">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#059669' }} aria-hidden="true" />
+          Circuit fermé
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#dc2626' }} aria-hidden="true" />
+          Coupe-circuit activé
+        </span>
+      </div>
     </div>
   )
 }
