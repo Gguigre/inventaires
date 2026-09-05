@@ -10,6 +10,7 @@ vi.mock('../data/repository', () => ({
     saveControl: vi.fn(),
     getInventoryAssociationId: vi.fn(),
     getAssociationEmails: vi.fn(),
+    updateControlEmailStatus: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
     listRecentControls: vi.fn(),
     listItemCompartmentIds: vi.fn(),
   },
@@ -17,6 +18,12 @@ vi.mock('../data/repository', () => ({
 
 vi.mock('./email-service', () => ({
   sendControlCompletedEmail: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+}))
+
+// after() ne fonctionne que dans le scope d'une vraie requête Next.js ; en test on exécute
+// le callback immédiatement pour pouvoir observer le comportement de notifyControlCompleted.
+vi.mock('next/server', () => ({
+  after: (fn: () => void) => fn(),
 }))
 
 const mockInventoryResult = {

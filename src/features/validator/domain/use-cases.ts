@@ -1,3 +1,4 @@
+import { after } from 'next/server'
 import type { Result } from '@/shared/domain/result'
 import { ok, err } from '@/shared/domain/result'
 import { validatorRepository, type LoadInventoryResult } from '../data/repository'
@@ -46,10 +47,14 @@ export async function submitControlUseCase(
   const result = await validatorRepository.saveControl(submission, associationId)
   if (!result.ok) return result
 
-  // Fire-and-forget : ne bloque pas la réponse au vérificateur sur l'envoi du mail
+  // Différé via after() : ne bloque pas la réponse au vérificateur sur l'envoi du mail,
+  // tout en garantissant l'exécution jusqu'au bout après la réponse (contrairement à une
+  // promesse orpheline, que le runtime serverless peut interrompre avant sa résolution).
   if (associationId) {
-    notifyControlCompleted(associationId, submission, emailContext).catch((error) =>
-      console.error('[submitControlUseCase] notification échouée', error),
+    after(() =>
+      notifyControlCompleted(associationId, submission, emailContext, result.value.controlId).catch((error) =>
+        console.error('[submitControlUseCase] notification échouée', error),
+      ),
     )
   }
 
@@ -60,11 +65,24 @@ async function notifyControlCompleted(
   associationId: string,
   submission: ControlSubmission,
   emailContext: ControlEmailContext,
+  controlId: string,
 ): Promise<void> {
   const assocEmailResult = await validatorRepository.getAssociationEmails(associationId)
-  if (!assocEmailResult.ok) return
+  if (!assocEmailResult.ok) {
+    await validatorRepository.updateControlEmailStatus(controlId, 'failed', assocEmailResult.error)
+    return
+  }
 
-  await sendControlCompletedEmail(
+  if (assocEmailResult.value.emails.length === 0) {
+    await validatorRepository.updateControlEmailStatus(
+      controlId,
+      'skipped',
+      'Aucune adresse de notification configurée pour cette association.',
+    )
+    return
+  }
+
+  const sendResult = await sendControlCompletedEmail(
     emailContext,
     submission.verifierName,
     submission.results.length,
@@ -75,5 +93,11 @@ async function notifyControlCompleted(
       hour: '2-digit', minute: '2-digit',
     }),
     assocEmailResult.value.alertThresholdDays,
+  )
+
+  await validatorRepository.updateControlEmailStatus(
+    controlId,
+    sendResult.ok ? 'sent' : 'failed',
+    sendResult.ok ? undefined : sendResult.error,
   )
 }

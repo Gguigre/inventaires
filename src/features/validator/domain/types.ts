@@ -42,6 +42,8 @@ export type ControlEmailContext = {
   expiryDates: { itemName: string; compartmentName: string; date: string }[]
 }
 
+export type ControlEmailStatus = 'sent' | 'failed' | 'skipped'
+
 export type FeedbackSubmission = {
   controlId: string
   rating: number

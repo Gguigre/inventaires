@@ -70,7 +70,17 @@ export function ControlsListPage({ controls, alerts, alertThresholdDays }: Contr
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-slate-600">{control.verifierName}</td>
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formatDateTime(control.submittedAt)}</td>
+                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                        {formatDateTime(control.submittedAt)}
+                        {(control.emailStatus === 'failed' || control.emailStatus === 'skipped') && (
+                          <span
+                            className="ml-1.5 text-amber-500"
+                            title={`Mail de notification non envoyé${control.emailError ? ` : ${control.emailError}` : ''}`}
+                          >
+                            ⚠
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         {control.anomalyCount > 0
                           ? <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 text-red-700 text-xs font-bold">{control.anomalyCount}</span>

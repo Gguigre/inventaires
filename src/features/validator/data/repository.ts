@@ -7,6 +7,7 @@ import type { Result } from "@/shared/domain/result";
 import { ok, err } from "@/shared/domain/result";
 import type {
   CompartmentWithItems,
+  ControlEmailStatus,
   ControlSubmission,
   FeedbackSubmission,
   Inventory,
@@ -185,6 +186,24 @@ export const validatorRepository = {
     } catch (error) {
       return err(
         `Impossible d\'enregistrer le contrôle. Erreur: ${(error as Error).message}`,
+      );
+    }
+  },
+
+  async updateControlEmailStatus(
+    controlId: string,
+    status: ControlEmailStatus,
+    error?: string,
+  ): Promise<Result<void>> {
+    try {
+      await adminDb.collection("controles").doc(controlId).update({
+        emailStatus: status,
+        emailError: error ?? null,
+      });
+      return ok(undefined);
+    } catch (error) {
+      return err(
+        `Impossible de mettre à jour le statut d'envoi du mail. Erreur: ${(error as Error).message}`,
       );
     }
   },

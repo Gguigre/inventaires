@@ -7,6 +7,8 @@ export type CreateAnomalyCorrectionInput = {
   correctedBy: string
 }
 
+export type ControlEmailStatus = 'sent' | 'failed' | 'skipped'
+
 export type ControlSummary = {
   id: string
   inventoryId: string
@@ -15,6 +17,8 @@ export type ControlSummary = {
   submittedAt: Date
   anomalyCount: number  // snapshot historique : anomalies de statut + items périmés lors du contrôle
   atRiskCount: number
+  emailStatus: ControlEmailStatus | null
+  emailError: string | null
 }
 
 export type ItemResult = {
@@ -38,6 +42,8 @@ export type ControlDetail = {
   verifierName: string
   submittedAt: Date
   compartments: ControlCompartment[]
+  emailStatus: ControlEmailStatus | null
+  emailError: string | null
 }
 
 export type CreateCorrectionInput = {

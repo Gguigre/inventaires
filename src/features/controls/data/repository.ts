@@ -95,6 +95,8 @@ export const controlsRepository = {
             if (Number.isNaN(d.getTime())) return false
             return d > submittedAt && d <= riskAt
           }).length,
+          emailStatus: data.emailStatus ?? null,
+          emailError: data.emailError ?? null,
         }
       })
       controls.sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())
@@ -159,7 +161,15 @@ export const controlsRepository = {
           status: r.status, comment: r.comment ?? null, expiryDate: r.expiryDate ?? null, currentExpiryStatus: computeStatus(r),
         })
       }
-      return ok({ id: controlDoc.id, inventoryName, verifierName: data.verifierName, submittedAt: data.submittedAt?.toDate() ?? new Date(), compartments: [...compartmentMap.values()] })
+      return ok({
+        id: controlDoc.id,
+        inventoryName,
+        verifierName: data.verifierName,
+        submittedAt: data.submittedAt?.toDate() ?? new Date(),
+        compartments: [...compartmentMap.values()],
+        emailStatus: data.emailStatus ?? null,
+        emailError: data.emailError ?? null,
+      })
     } catch (error) {
       return err(`Impossible de charger le contrôle. Erreur: ${(error as Error).message}`)
     }

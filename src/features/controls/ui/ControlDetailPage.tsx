@@ -18,6 +18,11 @@ export function ControlDetailPage({ control }: ControlDetailPageProps) {
           <p className="text-sm text-slate-500 mt-0.5">
             {control.verifierName} · {formatDateTime(control.submittedAt)}
           </p>
+          {(control.emailStatus === 'failed' || control.emailStatus === 'skipped') && (
+            <p className="text-xs text-amber-600 mt-1">
+              ⚠ Mail de notification non envoyé{control.emailError ? ` — ${control.emailError}` : ''}
+            </p>
+          )}
         </div>
       </div>
 
